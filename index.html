@@ -1,0 +1,637 @@
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;}
+.app-header{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:16px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.05);border-radius:12px;margin-bottom:15px;flex-wrap:wrap;gap:10px;}
+.header-title{font-size:18px;font-weight:700;color:#132017;}
+.header-subtitle{font-size:11px;color:#5e7867;margin-top:3px;}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.legend{display:flex;gap:12px;font-size:12px;color:#132017;background:#f6f9f6;padding:6px 12px;border-radius:8px;border:1px solid #dce5dc;}
+.legend-item{display:flex;align-items:center;gap:6px;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.dot-red{background:#e53935;}.dot-orange{background:#f57c00;}.dot-green{background:#22bf75;}
+.search-input{padding:8px 12px;border-radius:8px;border:1px solid #dce5dc;font-size:13px;color:#132017;outline:none;background:#fff;width:180px;font-family:Arial,sans-serif;}
+.search-input:focus{border-color:#1e8549;}
+.filter-select{padding:8px 12px;border-radius:8px;border:1px solid #dce5dc;font-size:13px;color:#132017;outline:none;background:#fff;cursor:pointer;font-family:Arial,sans-serif;}
+.filter-select:focus{border-color:#1e8549;}
+.btn-add-place{background:#1e8549;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;transition:background 0.15s;white-space:nowrap;}
+.btn-add-place:hover{background:#166b3a;}
+.btn-add-place.active-mode{background:#d32e22;}
+.btn-add-place.active-mode:hover{background:#b2241a;}
+#map{position:relative!important;width:100%;height:550px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);border:1px solid #dce5dc;z-index:1;background:#e5e9e5;}
+#map-hint{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#132017;color:#fff;padding:10px 22px;border-radius:9999px;font-size:13px;font-weight:600;z-index:2000;pointer-events:none;opacity:0;transition:opacity 0.2s;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.25);}
+#map-hint.show{opacity:1;}
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,25,15,0.45);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+#modal-overlay.show{display:flex;}
+#modal{background:#fff;border-radius:20px;width:440px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.22);overflow:hidden;animation:mshow 0.22s ease;}
+@keyframes mshow{from{transform:translateY(24px);opacity:0;}to{transform:none;opacity:1;}}
+.modal-header{background:linear-gradient(135deg,#1e8549 0%,#27ae60 100%);padding:20px 24px 16px;color:#fff;}
+.modal-header h3{font-size:17px;font-weight:700;margin-bottom:4px;}
+.modal-header p{font-size:12px;opacity:0.85;}
+.modal-body{padding:20px 24px;display:flex;flex-direction:column;gap:14px;max-height:60vh;overflow-y:auto;}
+.field-label{font-size:12px;font-weight:700;color:#5e7867;margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:0.05em;}
+.field-label span{color:#e53935;}
+.modal-input,.modal-textarea,.modal-select{width:100%;border:1.5px solid #dce5dc;border-radius:10px;padding:9px 12px;font-size:13px;outline:none;font-family:Arial,sans-serif;color:#132017;transition:border-color 0.15s;background:#fff;}
+.modal-input:focus,.modal-textarea:focus,.modal-select:focus{border-color:#1e8549;}
+.modal-textarea{height:80px;resize:none;line-height:1.5;}
+.stars-row{display:flex;gap:6px;}
+.star-pick{font-size:28px;cursor:pointer;color:#dce5dc;transition:color 0.12s,transform 0.12s;line-height:1;user-select:none;}
+.star-pick:hover,.star-pick.active{color:#f59f0a;}
+.star-pick:hover{transform:scale(1.15);}
+.stars-hint{font-size:11px;color:#5e7867;margin-top:6px;min-height:16px;}
+.photo-upload-row{display:flex;gap:10px;}
+.photo-upload-box{flex:1;border:2px dashed #dce5dc;border-radius:12px;padding:12px 8px;text-align:center;cursor:pointer;transition:border-color 0.15s,background 0.15s;position:relative;overflow:hidden;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.photo-upload-box:hover{border-color:#1e8549;background:#f6f9f6;}
+.photo-upload-box input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.photo-upload-icon{font-size:24px;margin-bottom:4px;}
+.photo-upload-label-text{font-size:11px;font-weight:700;color:#5e7867;text-transform:uppercase;letter-spacing:0.05em;}
+.photo-upload-sub{font-size:10px;color:#9db8a5;margin-top:2px;}
+.photo-preview{width:100%;height:90px;object-fit:cover;border-radius:8px;display:none;}
+.photo-clear{position:absolute;top:4px;right:6px;background:#e53935;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;text-align:center;cursor:pointer;display:none;z-index:2;}
+/* Donate toggle block in modal */
+.donate-toggle-block{background:#fffbf0;border:1px solid #ebdcb2;border-radius:10px;padding:12px 14px;}
+.donate-toggle-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
+.donate-toggle-title{font-size:12px;font-weight:700;color:#8f6d13;display:flex;align-items:center;gap:6px;}
+.donate-toggle-badge{font-size:10px;background:#f59f0a;color:#fff;padding:2px 7px;border-radius:9999px;font-weight:700;}
+.toggle-switch{position:relative;width:38px;height:20px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:#dce5dc;border-radius:9999px;transition:background 0.2s;}
+.toggle-slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:transform 0.2s;}
+.toggle-switch input:checked+.toggle-slider{background:#f59f0a;}
+.toggle-switch input:checked+.toggle-slider:before{transform:translateX(18px);}
+.donate-fields{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
+.donate-hint{font-size:10px;color:#9db8a5;margin-top:2px;}
+
+.modal-footer{padding:12px 24px 20px;display:flex;flex-direction:column;gap:12px;border-top:1px solid #f0f4f0;}
+.modal-footer-buttons{display:flex;gap:10px;}
+.btn-cancel{flex:1;padding:10px;border-radius:10px;border:1.5px solid #dce5dc;background:#f6f9f6;color:#5e7867;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;}
+.btn-cancel:hover{background:#edf3ed;}
+.btn-confirm{flex:2;padding:10px;border-radius:10px;border:none;background:#1e8549;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;transition:background 0.15s;}
+.btn-confirm:hover{background:#166b3a;}
+.modal-donate-note{font-size:11px;line-height:1.5;color:#5e7867;text-align:center;margin-top:4px;background:#f4f8f5;padding:10px 12px;border-radius:8px;border:1px dashed #c3decb;}
+.custom-popup .leaflet-popup-content-wrapper{border-radius:16px;padding:0;overflow:visible;box-shadow:0 8px 32px rgba(0,0,0,0.18);border:1.5px solid #dce5dc;min-width:320px;max-width:360px;}
+.custom-popup .leaflet-popup-content{margin:0;width:100%!important;}
+.popup-inner{font-family:Arial,sans-serif;color:#132017;max-height:480px;overflow-y:auto;}
+.popup-header{padding:14px 14px 10px;background:#fff;position:relative;}
+.popup-title{font-size:15px;font-weight:700;color:#132017;margin-bottom:6px;line-height:1.3;padding-right:75px;}
+.popup-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+.badge{display:inline-block;padding:3px 10px;border-radius:9999px;font-size:11px;font-weight:600;}
+.badge-red{background:#fde8e6;color:#d32e22;}.badge-orange{background:#fff3e0;color:#e07b00;}.badge-green{background:#e6f9f0;color:#1a7a4a;}
+.star-on{color:#f59f0a;font-size:13px;}.star-off{color:#dce5dc;font-size:13px;}
+.popup-desc{font-size:12px;color:#5e7867;line-height:1.5;margin-top:4px;}
+.btn-share{position:absolute;top:14px;right:25px;background:#f0f4f0;color:#1e8549;border:none;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;}
+.btn-share:hover{background:#dce5dc;}
+.popup-info{padding:6px 14px 8px;background:#f6f9f6;border-top:1px solid #dce5dc;display:flex;gap:12px;flex-wrap:wrap;}
+.info-item{display:flex;align-items:center;gap:4px;font-size:11px;color:#5e7867;}
+.vol-badge{display:inline-block;background:#e6f9f0;color:#1a7a4a;border-radius:9999px;padding:2px 8px;font-size:12px;font-weight:700;transition:all 0.3s;}
+.vol-bump{animation:vbump 0.4s ease;}
+@keyframes vbump{0%{transform:scale(1);}50%{transform:scale(1.35);background:#1e8549;color:#fff;}100%{transform:scale(1);}}
+.photo-section{padding:10px 14px;background:#fff;border-top:1px solid #dce5dc;}
+.photo-row{display:flex;gap:8px;}
+.photo-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.photo-label{font-size:10px;font-weight:700;color:#5e7867;text-transform:uppercase;letter-spacing:0.06em;}
+.photo-img{width:100%;height:100px;object-fit:cover;border-radius:8px;border:1px solid #dce5dc;}
+.photo-placeholder{width:100%;height:100px;border-radius:8px;border:1px solid #dce5dc;background:#f0f0f0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#999;padding:6px;line-height:1.3;flex-direction:column;gap:4px;}
+.btn-upload-after{background:#1e8549;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;margin-top:2px;}
+.btn-upload-after:hover{background:#166b3a;}
+.popup-donate-block{margin:10px 14px 4px;background:#fbf9f0;border:1px solid #ebdcb2;border-radius:10px;padding:10px 12px;}
+.popup-donate-title{font-size:13px;font-weight:700;color:#8f6d13;margin-bottom:3px;}
+.popup-donate-text{font-size:11px;color:#6b5a2e;line-height:1.4;margin-bottom:6px;}
+.popup-donate-phone{font-size:12px;font-weight:700;color:#132017;background:rgba(255,255,255,0.6);padding:4px 6px;border-radius:6px;display:inline-block;}
+.popup-chat{padding:8px 14px 10px;background:#fff;border-top:1px solid #dce5dc;}
+.chat-title{font-size:10px;font-weight:700;color:#5e7867;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;}
+.chat-messages{max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+.chat-msg{display:flex;gap:6px;align-items:flex-start;}
+.chat-av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#1e8549;}
+.chat-av-you{background:#5e7867;}
+.chat-bubble{flex:1;}
+.chat-name{font-size:10px;font-weight:700;color:#1e8549;margin-bottom:1px;display:flex;justify-content:space-between;align-items:center;}
+.chat-name-you{color:#5e7867!important;}
+.chat-text{font-size:11px;color:#132017;line-height:1.4;background:#f6f9f6;border-radius:0 8px 8px 8px;padding:4px 7px;}
+.chat-time{font-size:9px;color:#9db8a5;margin-top:1px;text-align:right;}
+.chat-input-row{display:flex;gap:6px;margin-top:8px;}
+.chat-input{flex:1;border:1px solid #dce5dc;border-radius:8px;padding:5px 8px;font-size:11px;outline:none;font-family:Arial,sans-serif;}
+.chat-input:focus{border-color:#1e8549;}
+.chat-send{background:#1e8549;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:13px;cursor:pointer;font-weight:600;}
+.chat-send:hover{background:#166b3a;}
+.action-area{padding:0 14px 12px;background:#fff;border-top:1px solid #dce5dc;}
+.action-btn{display:block;width:100%;margin-top:10px;padding:10px 0;border-radius:9px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:Arial,sans-serif;}
+.btn-join{background:#1e8549;color:#fff;}.btn-join:hover{background:#166b3a;}
+.btn-decline{background:#fde8e6;color:#d32e22;}.btn-decline:hover{background:#fbc8c4;}
+.btn-del-msg{color:#e53935;cursor:pointer;font-size:11px;font-weight:bold;padding:0 4px;}
+@keyframes shake{0%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}100%{transform:translateX(0);}}
+</style>
+
+<div style="padding:20px;">
+  <div class="app-header">
+    <div>
+      <div class="header-title">Карта волонтеров чистоты</div>
+      <div class="header-subtitle">Отметь место, чтобы внести свой вклад в чистоту города</div>
+    </div>
+    <div class="header-right">
+      <div class="legend">
+        <div class="legend-item"><span class="dot dot-red"></span>Новый</div>
+        <div class="legend-item"><span class="dot dot-orange"></span>В работе</div>
+        <div class="legend-item"><span class="dot dot-green"></span>Выполнено</div>
+      </div>
+      <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск места...">
+      <select id="filterSelect" class="filter-select">
+        <option value="all">Все статусы</option>
+        <option value="новая">Новая</option>
+        <option value="в работе">В работе</option>
+        <option value="выполнена">Выполнена</option>
+      </select>
+      <select id="filterDiffSelect" class="filter-select">
+        <option value="all">Вся сложность</option>
+        <option value="1">★☆☆☆☆ (Очень легко)</option>
+        <option value="2">★★☆☆☆ (Легко)</option>
+        <option value="3">★★★☆☆ (Средне)</option>
+        <option value="4">★★★★☆ (Сложно)</option>
+        <option value="5">★★★★★ (Очень сложно)</option>
+      </select>
+      <button id="addPlaceBtn" class="btn-add-place" onclick="toggleAddMarkerMode()">＋ Отметить место</button>
+    </div>
+  </div>
+  <div id="map"></div>
+  <div id="map-hint">📍 Кликните на карту, чтобы выбрать место</div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="modal-header">
+      <h3>📍 Новое место уборки</h3>
+      <p>Заполните информацию — это поможет другим волонтёрам</p>
+    </div>
+    <div class="modal-body">
+      <div>
+        <label class="field-label">Название места <span>*</span></label>
+        <input id="m-name" class="modal-input" placeholder="Например: Парк у озера" maxlength="60"/>
+      </div>
+      <div>
+        <label class="field-label">Описание проблемы <span>*</span></label>
+        <textarea id="m-desc" class="modal-textarea" placeholder="Что здесь загрязнено? Какой масштаб проблемы?"></textarea>
+      </div>
+      <div>
+        <label class="field-label">Статус</label>
+        <select id="m-status" class="modal-select">
+          <option value="новая">🔴 Новая — ещё никто не занимался</option>
+          <option value="в работе">🟠 В работе — уже занимаемся</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Сложность уборки</label>
+        <div class="stars-row" id="stars-row">
+          <span class="star-pick" data-v="1" onclick="pickStar(1)">★</span>
+          <span class="star-pick" data-v="2" onclick="pickStar(2)">★</span>
+          <span class="star-pick" data-v="3" onclick="pickStar(3)">★</span>
+          <span class="star-pick" data-v="4" onclick="pickStar(4)">★</span>
+          <span class="star-pick" data-v="5" onclick="pickStar(5)">★</span>
+        </div>
+        <div class="stars-hint" id="stars-hint">Выберите сложность от 1 до 5</div>
+      </div>
+      <!-- DONATE TOGGLE — показывается только при diff 4-5 -->
+      <div id="donate-toggle-wrap" style="display:none;">
+        <div class="donate-toggle-block">
+          <div class="donate-toggle-header" onclick="toggleDonateFields()">
+            <div class="donate-toggle-title">☕ Добавить блок доната <span class="donate-toggle-badge">4–5 ★</span></div>
+            <label class="toggle-switch" onclick="event.stopPropagation()">
+              <input type="checkbox" id="donate-toggle-cb" onchange="toggleDonateFields()"/>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="donate-fields" id="donate-fields" style="display:none;">
+            <div>
+              <label class="field-label">Описание — на что нужен донат</label>
+              <textarea id="m-donate-text" class="modal-textarea" placeholder="Например: нужны прочные мешки, перчатки и лопаты для 20 волонтёров..."></textarea>
+              <div class="donate-hint">Расскажите конкретно — люди охотнее помогают, когда понимают цель</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="field-label">Фото «До уборки»</label>
+        <div class="photo-upload-row">
+          <div class="photo-upload-box" id="box-before">
+            <input type="file" accept="image/*" onchange="handlePhoto(this,'before')" id="file-before"/>
+            <button class="photo-clear" id="clear-before" onclick="clearPhoto(event,'before')">✕</button>
+            <img class="photo-preview" id="prev-before" alt=""/>
+            <div id="box-before-inner">
+              <div class="photo-upload-icon">📷</div>
+              <div class="photo-upload-label-text">Фото до</div>
+              <div class="photo-upload-sub">Нажмите для загрузки</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div class="modal-footer-buttons">
+        <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+        <button class="btn-confirm" onclick="confirmMark()">✅ Добавить метку</button>
+      </div>
+      <div class="modal-donate-note">
+        💡 <b>Для создателя:</b> При сложности 4–5 звёзд в карточке появится блок «☕ Поддержать уборку» с номером <b>+77778597323</b> для перевода средств на инвентарь. Обратитесь ко мне — скажите сколько и зачем вам деньги при уборке в <b>TG или WhatsApp</b>, также отправьте скрин метки и ваш номер для переводов.
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="popup-file-after" accept="image/*" style="display:none;" onchange="handleAfterPhotoUploaded(this)"/>
+
+<script>
+window.map=null; window.appPoints=[]; window.markersLayers=[]; window.isAddingMarkerMode=false;
+var _pendingLatLng=null, _pickedDiff=3, _photoBeforeData=null, _currentAfterPhotoTargetUid=null;
+var DIFF_LABELS=['','Очень легко 😊','Легко 🙂','Средне 😐','Сложно 😤','Очень сложно 💪'];
+
+// ── Фото-пул: подобраны по смыслу ──
+// dirty[0] = куча мусора у дороги/парка → Парк Победы (вход захламлён)
+// dirty[1] = берег реки с пластиком → Набережная р. Урал
+// dirty[2] = торговые ряды + мусор → Рынок Зенков
+// dirty[3] = строительный мусор/свалка → Зачаганск
+// dirty[4] = двор/сквер с мусором → ДК Металлург
+// dirty[5] = голая аллея/земля без деревьев → Улица Достык (до посадки)
+// dirty[6] = трибуны/стадион с мусором → Стадион Металлург
+// dirty[7] = крупная дворовая свалка → Микрорайон Мирный
+// dirty[8] = старая детская площадка → Парк Чайка
+// dirty[9] = пустырь с мусором → Гагарина
+// dirty[10] = клумба с сорняками → Площадь Абая
+// dirty[11] = берег с промышленными отходами → Набережная у моста
+// dirty[12] = роща с листьями и ветками → Рощица школа №12
+// dirty[13] = забор + мусор вдоль улицы → Ж/д район ул.Ленина
+// clean[0]  = чистый парк/вход → Парк Победы после
+// clean[1]  = чистый берег реки → Рынок Зенков после
+// clean[2]  = зелёная аллея с деревьями → Улица Достык после
+// clean[3]  = яркая детская площадка → Парк Чайка после
+// clean[4]  = чистая ухоженная роща → Рощица школа №12 после
+// clean[5+] = чистые места Алматы
+
+var PH={
+  dirty:[
+    'https://avatars.mds.yandex.net/i?id=3050dccc7f66998f4fbcb4b62ea707c4_l-12484740-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=2e44afbf3e24da4874f23399cf39cfac88581b47-12536664-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=e4eba51382e562edd6887d6f357e60304c97f25f-6946649-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=4e1e796be69c2d3a354590d190d8e9816988780d-6222399-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=a42ecca80ee1ffe406ddc77d99e61a95892cfbdd-4033955-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=143a1e605590438b5c25caf3e73095b9deae7ceb-5161097-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=5a1298d5c15af5bbf79b8b7e5042004fb9e9bec6-4428301-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=090387e54aba76ac767952ad136a4bc93b1acd4b-12856979-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=0bbbd92ede290c445083e7b57f4ceab7301cc3b8-12569850-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=40b444bfd34db8545a489b88876322a7dda1f1d8-9701523-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=fd788ec042ecc5f6ba8d2ee8cf5f14a9b35c0ad6-5255574-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=857da9d87e64e095c934f3326a082a40260db37b-5312482-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=2c04cdcb519df5366c80773348420c5a539fdb1d-11924570-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=f7e75f10aae0dd390269973e304f6b2420331625-4893181-images-thumbs&n=13'
+  ],
+  clean:[
+    'https://avatars.mds.yandex.net/i?id=b5c5788ceac9fb3798435f559f6f1d53756f1ae0-12310327-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=e311adcae1f1f795919868c0865f660281332eac-4552383-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=bf6cc4f8ea8dc007c212dc0233da0a61e91cfc50-5858269-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=5a1298d5c15af5bbf79b8b7e5042004fb9e9bec6-4428301-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=0305885debb58cfbed118833c53ce921d08592b0-8210080-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=40b444bfd34db8545a489b88876322a7dda1f1d8-9701523-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=090387e54aba76ac767952ad136a4bc93b1acd4b-12856979-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=fd788ec042ecc5f6ba8d2ee8cf5f14a9b35c0ad6-5255574-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=857da9d87e64e095c934f3326a082a40260db37b-5312482-images-thumbs&n=13',
+    'https://avatars.mds.yandex.net/i?id=2c04cdcb519df5366c80773348420c5a539fdb1d-11924570-images-thumbs&n=13'
+  ]
+};
+
+var SS={
+  key:function(n,s){return 'vol_'+n.replace(/[^a-z0-9]/gi,'_')+'_'+s;},
+  getJoined:function(n){return localStorage.getItem(SS.key(n,'joined'))==='1';},
+  setJoined:function(n,v){localStorage.setItem(SS.key(n,'joined'),v?'1':'0');},
+  getVolCount:function(n,base){var v=localStorage.getItem(SS.key(n,'vol'));return v!==null?parseInt(v):base;},
+  setVolCount:function(n,v){localStorage.setItem(SS.key(n,'vol'),String(v));},
+  getCustom:function(){try{return JSON.parse(localStorage.getItem('custom_pts')||'[]');}catch(e){return[];}},
+  saveCustom:function(arr){localStorage.setItem('custom_pts',JSON.stringify(arr));},
+  getModifiedBase:function(){try{return JSON.parse(localStorage.getItem('modified_base_pts')||'{}');}catch(e){return{};}},
+  saveModifiedBase:function(obj){localStorage.setItem('modified_base_pts',JSON.stringify(obj));}
+};
+
+function pickStar(v){
+  _pickedDiff=v;
+  document.querySelectorAll('.star-pick').forEach(function(s){s.classList.toggle('active',parseInt(s.dataset.v)<=v);});
+  document.getElementById('stars-hint').textContent=DIFF_LABELS[v];
+  // Показать/скрыть блок доната
+  var wrap=document.getElementById('donate-toggle-wrap');
+  if(v>=4){wrap.style.display='block';}
+  else{
+    wrap.style.display='none';
+    document.getElementById('donate-toggle-cb').checked=false;
+    document.getElementById('donate-fields').style.display='none';
+  }
+}
+
+function toggleDonateFields(){
+  var cb=document.getElementById('donate-toggle-cb');
+  // если кликнули на header div — переключим чекбокс
+  cb.checked=!cb.checked;
+  document.getElementById('donate-fields').style.display=cb.checked?'flex':'none';
+}
+// Реальный onchange чекбокса
+document.addEventListener('DOMContentLoaded',function(){
+  var cb=document.getElementById('donate-toggle-cb');
+  if(cb) cb.addEventListener('change',function(){
+    document.getElementById('donate-fields').style.display=cb.checked?'flex':'none';
+  });
+});
+
+function handlePhoto(input,which){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    if(which==='before'){
+      _photoBeforeData=e.target.result;
+      var img=document.getElementById('prev-before');
+      img.src=e.target.result;img.style.display='block';
+      document.getElementById('box-before-inner').style.display='none';
+      document.getElementById('clear-before').style.display='block';
+    }
+  };reader.readAsDataURL(file);
+}
+
+function clearPhoto(e,which){
+  if(e&&e.stopPropagation){e.stopPropagation();e.preventDefault();}
+  if(which==='before'){
+    _photoBeforeData=null;
+    document.getElementById('prev-before').style.display='none';
+    document.getElementById('prev-before').src='';
+    document.getElementById('box-before-inner').style.display='';
+    document.getElementById('clear-before').style.display='none';
+    document.getElementById('file-before').value='';
+  }
+}
+
+function openModal(){
+  document.getElementById('m-name').value='';
+  document.getElementById('m-desc').value='';
+  document.getElementById('m-status').value='новая';
+  document.getElementById('m-donate-text').value='';
+  document.getElementById('donate-toggle-cb').checked=false;
+  document.getElementById('donate-fields').style.display='none';
+  document.getElementById('donate-toggle-wrap').style.display='none';
+  pickStar(3);clearPhoto(null,'before');
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+window.closeModal=function(){
+  document.getElementById('modal-overlay').classList.remove('show');
+  cancelMode();
+};
+
+window.confirmMark=function(){
+  var name=document.getElementById('m-name').value.trim();
+  var desc=document.getElementById('m-desc').value.trim();
+  var status=document.getElementById('m-status').value;
+  if(!name){shakeField('m-name');return;}
+  if(!desc){shakeField('m-desc');return;}
+  var donate=null;
+  var cb=document.getElementById('donate-toggle-cb');
+  if(_pickedDiff>=4&&cb.checked){
+    var dt=document.getElementById('m-donate-text').value.trim();
+    donate={text:dt||'Уборка этого места требует серьёзного инвентаря. Ваш донат пойдёт на закупку мешков, перчаток и оборудования.',phone:'+77778597323'};
+  }
+  var pt={name:name,status:status,diff:_pickedDiff,desc:desc,org:'Вы',vol:1,lat:_pendingLatLng.lat,lng:_pendingLatLng.lng,before:_photoBeforeData,after:null,chat:[],custom:true,donate:donate};
+  window.appPoints.push(pt);
+  SS.saveCustom(window.appPoints.filter(function(p){return p.custom;}));
+  document.getElementById('modal-overlay').classList.remove('show');
+  cancelMode();
+  window.applyFiltersAndRender();
+};
+
+function shakeField(id){
+  var el=document.getElementById(id);
+  el.style.borderColor='#e53935';el.style.animation='shake 0.3s ease';
+  setTimeout(function(){el.style.animation='';el.style.borderColor='';},400);
+}
+
+window.toggleAddMarkerMode=function(){
+  var btn=document.getElementById('addPlaceBtn');
+  if(!window.isAddingMarkerMode){
+    window.isAddingMarkerMode=true;btn.textContent='❌ Отмена';btn.classList.add('active-mode');
+    if(window.map)window.map.getContainer().style.cursor='crosshair';
+    document.getElementById('map-hint').classList.add('show');
+  } else {cancelMode();}
+};
+
+function cancelMode(){
+  window.isAddingMarkerMode=false;
+  var btn=document.getElementById('addPlaceBtn');
+  btn.textContent='＋ Отметить место';btn.classList.remove('active-mode');
+  if(window.map)window.map.getContainer().style.cursor='';
+  document.getElementById('map-hint').classList.remove('show');
+}
+
+function mkIcon(color,isCustom){
+  var c=color==='red'?'#e53935':color==='orange'?'#f57c00':'#22bf75';
+  var inner=isCustom?'<text x="16" y="19" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">★</text>':'<circle cx="16" cy="14" r="5" fill="#fff" opacity="0.9"/>';
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><ellipse cx="16" cy="38" rx="7" ry="3" fill="rgba(0,0,0,0.15)"/><path d="M16 2C9.373 2 4 7.373 4 14c0 9 12 24 12 24S28 23 28 14C28 7.373 22.627 2 16 2z" fill="'+c+'" stroke="#fff" stroke-width="2"/>'+inner+'</svg>';
+  return L.divIcon({html:svg,iconSize:[32,42],iconAnchor:[16,42],popupAnchor:[0,-44],className:''});
+}
+function starsHtml(n){var s='';for(var i=1;i<=5;i++)s+='<span class="'+(i<=n?'star-on':'star-off')+'">★</span>';return s;}
+function badgeHtml(s){if(s==='новая')return '<span class="badge badge-red">🔴 новая</span>';if(s==='в работе')return '<span class="badge badge-orange">🟠 в работе</span>';return '<span class="badge badge-green">✅ выполнена</span>';}
+function nowTime(){var d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+function avEl(n,isYou){return '<div class="chat-av'+(isYou?' chat-av-you':'')+'">'+n.charAt(0).toUpperCase()+'</div>';}
+
+function msgHtml(c,isYou,idx,uid){
+  var del=isYou?'<span class="btn-del-msg" onclick="deleteMsg(\''+uid+'\','+idx+')">✕</span>':'';
+  return '<div class="chat-msg">'+avEl(c.n||'Вы',isYou)+'<div class="chat-bubble"><div class="chat-name'+(isYou?' chat-name-you':'')+'"><span>'+(c.n||'Вы')+'</span>'+del+'</div><div class="chat-text">'+c.t+'</div><div class="chat-time">'+c.w+'</div></div></div>';
+}
+
+function photoSection(before,after,uid){
+  var h='<div class="photo-section"><div class="photo-row">';
+  h+='<div class="photo-col"><div class="photo-label">До</div>';
+  if(before)h+='<img class="photo-img" src="'+before+'" loading="lazy"/>';
+  else h+='<div class="photo-placeholder">Фото не добавлено</div>';
+  h+='</div><div class="photo-col"><div class="photo-label">После</div>';
+  if(after)h+='<img class="photo-img" src="'+after+'" loading="lazy"/>';
+  else h+='<div class="photo-placeholder"><span>Ещё не закончена</span><button class="btn-upload-after" onclick="triggerAfterPhotoUpload(\''+uid+'\')">📸 Загрузить</button></div>';
+  h+='</div></div></div>';return h;
+}
+
+function donateHtml(m){
+  if(!m.donate)return '';
+  return '<div class="popup-donate-block"><div class="popup-donate-title">☕ Поддержать уборку</div><div class="popup-donate-text">'+m.donate.text+'</div><div class="popup-donate-phone">Kaspi / Номер для перевода: '+(m.donate.phone||'+77778597323')+'</div></div>';
+}
+
+function buildPopup(m){
+  var joined=SS.getJoined(m.name),volCount=SS.getVolCount(m.name,m.vol),uid=m.name.replace(/[^a-zA-Z0-9]/g,'_');
+  var h='<div class="popup-inner"><div class="popup-header"><button class="btn-share" onclick="copyShareLink('+m.lat+','+m.lng+')">🔗 Поделиться</button><div class="popup-title">'+m.name+'</div><div class="popup-meta">'+badgeHtml(m.status)+(m.diff?'<span>'+starsHtml(m.diff)+'</span>':'')+'</div><div class="popup-desc">'+m.desc+'</div></div>';
+  h+='<div class="popup-info"><div class="info-item">👤 '+m.org+'</div><div class="info-item">🙋 <span class="vol-badge" id="vc_'+uid+'">'+volCount+'</span>&nbsp;волонтёров</div>'+(m.custom?'<div class="info-item" style="color:#1e8549;font-weight:700">⭐ Ваша метка</div>':'')+'</div>';
+  h+=photoSection(m.before,m.after,uid);
+  h+=donateHtml(m);
+  h+='<div class="popup-chat"><div class="chat-title">💬 Чат акции</div><div class="chat-messages" id="msgs_'+uid+'">';
+  m.chat.forEach(function(c,i){h+=msgHtml(c,c.n==='Вы',i,uid);});
+  h+='</div><div class="chat-input-row"><input class="chat-input" id="inp_'+uid+'" placeholder="Написать сообщение..." maxlength="200"/><button class="chat-send" onclick="sendMsg(\''+uid+'\',\''+m.name+'\')">➤</button></div></div>';
+  if(m.status!=='выполнена'){var lbl=joined?'❌ Отказаться':(m.status==='новая'?'🧹 Взяться за уборку':'🤝 Присоединиться');h+='<div class="action-area"><button class="action-btn '+(joined?'btn-decline':'btn-join')+'" onclick="toggleJoin(\''+m.name+'\')">'+lbl+'</button></div>';}
+  h+='</div>';return h;
+}
+
+window.copyShareLink=function(lat,lng){var url=window.location.href.split('?')[0]+'?lat='+lat+'&lng='+lng;navigator.clipboard.writeText(url).then(function(){alert('Ссылка скопирована!');}).catch(function(){alert(url);});};
+window.triggerAfterPhotoUpload=function(uid){_currentAfterPhotoTargetUid=uid;document.getElementById('popup-file-after').click();};
+window.handleAfterPhotoUploaded=function(input){var file=input.files[0];if(!file||!_currentAfterPhotoTargetUid)return;var reader=new FileReader();reader.onload=function(e){var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===_currentAfterPhotoTargetUid;});if(m){m.after=e.target.result;m.status='выполнена';window.savePointState(m);window.applyFiltersAndRender();alert('Поздравляем! Фото добавлено.');}input.value='';};reader.readAsDataURL(file);};
+window.savePointState=function(m){if(m.custom){SS.saveCustom(window.appPoints.filter(function(p){return p.custom;}));}else{var mods=SS.getModifiedBase();mods[m.name]={after:m.after,status:m.status,chat:m.chat};SS.saveModifiedBase(mods);}};
+window.refreshChat=function(uid){var el=document.getElementById('msgs_'+uid);if(!el)return;var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid;});if(!m)return;var h='';m.chat.forEach(function(c,i){h+=msgHtml(c,c.n==='Вы',i,uid);});el.innerHTML=h;el.scrollTop=el.scrollHeight;};
+window.deleteMsg=function(uid,idx){var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid;});if(m){m.chat.splice(idx,1);window.savePointState(m);window.refreshChat(uid);}};
+window.sendMsg=function(uid,name){var inp=document.getElementById('inp_'+uid);if(!inp||!inp.value.trim())return;var m=window.appPoints.find(function(p){return p.name===name;});if(m){m.chat.push({n:'Вы',t:inp.value.trim(),w:nowTime()});window.savePointState(m);window.refreshChat(uid);inp.value='';}};
+window.toggleJoin=function(name){var joined=SS.getJoined(name),m=window.appPoints.find(function(p){return p.name===name;});if(!m)return;var vol=SS.getVolCount(name,m.vol);if(!joined){SS.setJoined(name,true);SS.setVolCount(name,vol+1);if(m.status==='новая'){m.status='в работе';window.savePointState(m);}alert('Вы успешно присоединились к уборке!');}else{SS.setJoined(name,false);SS.setVolCount(name,Math.max(1,vol-1));alert('Вы отменили своё участие.');}window.applyFiltersAndRender();setTimeout(function(){var uid=name.replace(/[^a-zA-Z0-9]/g,'_');var el=document.getElementById('vc_'+uid);if(el){el.classList.add('vol-bump');setTimeout(function(){el.classList.remove('vol-bump');},450);}},100);};
+
+window.applyFiltersAndRender=function(){
+  var sv=document.getElementById('searchInput').value.toLowerCase().trim();
+  var st=document.getElementById('filterSelect').value;
+  var df=document.getElementById('filterDiffSelect').value;
+  window.markersLayers.forEach(function(l){window.map.removeLayer(l);});window.markersLayers=[];
+  window.appPoints.forEach(function(m){
+    var ms=!sv||(m.name.toLowerCase().indexOf(sv)!==-1||m.desc.toLowerCase().indexOf(sv)!==-1);
+    var mst=st==='all'||m.status===st;
+    var md=df==='all'||String(m.diff)===df;
+    if(ms&&mst&&md){
+      var color=m.status==='новая'?'red':m.status==='в работе'?'orange':'green';
+      var marker=L.marker([m.lat,m.lng],{icon:mkIcon(color,m.custom)});
+      marker.bindPopup(buildPopup(m),{className:'custom-popup',minWidth:320,maxWidth:360});
+      marker.addTo(window.map);window.markersLayers.push(marker);
+    }
+  });
+};
+
+window.onload=function(){
+  window.map=L.map('map',{center:[51.2333,51.3667],zoom:13,zoomControl:true});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(window.map);
+
+  var D=PH.dirty, C=PH.clean;
+
+  // ══════════════════════════════════════════════
+  // 14 МЕТОК — ОРАЛ (оригинальные из вашего кода)
+  // Фото подобраны по смыслу:
+  // "до" = грязное место похожего типа
+  // "после" = чистое место только для выполненных
+  // ══════════════════════════════════════════════
+  var basePoints=[
+    // 1. Парк Победы — куча мусора у входа в парк → D[0] (бытовой мусор у дороги/парка)
+    // выполнена → после: чистый парк C[0]
+    {name:'Парк Победы',status:'выполнена',diff:3,desc:'Несанкционированная свалка у входа в парк полностью ликвидирована. Теперь место встречает горожан чистотой.',org:'Айгуль Сейткали',vol:8,lat:51.2390,lng:51.3720,before:D[0],after:C[0],donate:null,chat:[{n:'Айгуль С.',t:'Когда начинаем уборку? Могу в субботу с утра.',w:'09:15'},{n:'Берик Т.',t:'Я тоже буду! Захвачу большие мешки.',w:'09:40'},{n:'Айгуль С.',t:'Отлично, справились за 4 часа!',w:'14:05'}]},
+
+    // 2. Набережная р. Урал — берег реки с пластиком → D[1] (берег/вода + мусор)
+    // в работе → после: null
+    {name:'Набережная р. Урал',status:'в работе',diff:4,desc:'Загрязнение берега пластиком на протяжении 400 метров. Работаем по секторам каждые выходные.',org:'Дмитрий Ковалёв',vol:15,lat:51.2280,lng:51.3580,before:D[1],after:null,donate:{text:'Берег реки требует захваты-щипцы для мусора у воды, водонепроницаемые перчатки и прочные мешки 120л. На 15 человек нужно около 8 000 ₸.',phone:'+77778597323'},chat:[{n:'Дмитрий К.',t:'Привезли 20 мешков и перчатки для всех.',w:'08:30'},{n:'Сания М.',t:'Пластика очень много, нужны ещё люди!',w:'11:00'},{n:'Дмитрий К.',t:'Продолжаем завтра с 8 утра, приходите!',w:'16:20'}]},
+
+    // 3. Рынок Зенков — торговые ряды с мусором → D[2] (рынок/торговля + отходы)
+    // выполнена → после: чистые торговые ряды C[1]
+    {name:'Рынок Зенков',status:'выполнена',diff:2,desc:'Уборка территории рынка завершена — собрали упаковочный мусор, картон и пищевые отходы вокруг торговых рядов.',org:'Назгуль Ахметова',vol:12,lat:51.2350,lng:51.3800,before:D[2],after:C[1],donate:null,chat:[{n:'Назгуль А.',t:'Убрали всю территорию за 3 часа, молодцы!',w:'13:00'},{n:'Рустем И.',t:'Спасибо организаторам, очень дружная команда!',w:'13:30'},{n:'Гульмира Е.',t:'Фото отчёт готов, отправила в группу.',w:'14:10'}]},
+
+    // 4. Зачаганск — строительный мусор/свалка → D[3] (крупный строительный мусор)
+    // новая → после: null
+    {name:'Микрорайон Зачаганск',status:'новая',diff:5,desc:'Крупная стихийная свалка строительного мусора — бетон, кирпич, металлолом. Нужна спецтехника и большая команда.',org:'Серик Байжанов',vol:3,lat:51.2500,lng:51.3900,before:D[3],after:null,donate:{text:'Без КамАЗа и экскаватора строительный мусор не вывезти. Нужна аренда техники на 1 день (~25 000 ₸) + спецконтейнеры. Каждый тенге важен!',phone:'+77778597323'},chat:[{n:'Серик Б.',t:'Нужна спецтехника, объём очень большой.',w:'10:00'},{n:'Павел Г.',t:'Могу договориться с трактором через знакомых.',w:'11:30'},{n:'Серик Б.',t:'Отлично! Пишите всем кто может помочь.',w:'12:00'}]},
+
+    // 5. ДК Металлург — двор/сквер запущенный → D[4] (запущенная территория/двор)
+    // в работе → после: null
+    {name:'Сквер у ДК Металлург',status:'в работе',diff:2,desc:'Покраска лавочек и уборка территории. Инвентарь выдаём на месте. Осталось 2 лавочки и клумба.',org:'Ирина Попова',vol:7,lat:51.2310,lng:51.3650,before:D[4],after:null,donate:null,chat:[{n:'Ирина П.',t:'Краска куплена, кисти есть. Ждём всех в 10:00!',w:'09:00'},{n:'Тимур Х.',t:'Буду с другом, захватим дополнительные кисти.',w:'09:45'},{n:'Ирина П.',t:'2 лавочки уже готовы, красота получается!',w:'12:30'}]},
+
+    // 6. Улица Достык — голая аллея без деревьев → D[5] (пустая земля/аллея)
+    // выполнена → после: зелёная аллея с деревьями C[2]
+    {name:'Улица Достык',status:'выполнена',diff:1,desc:'Посадка 15 деревьев вдоль аллеи — липы и клёны. Через несколько лет здесь будет настоящая тень!',org:'Марат Жаксыбеков',vol:20,lat:51.2340,lng:51.3700,before:D[5],after:C[2],donate:null,chat:[{n:'Марат Ж.',t:'Посадили 15 деревьев! Рекорд нашего отряда.',w:'15:00'},{n:'Алия Н.',t:'Здорово! Через 5 лет тут будет настоящая аллея.',w:'15:20'},{n:'Марат Ж.',t:'Спасибо всем 20 участникам, вы лучшие!',w:'16:00'}]},
+
+    // 7. Стадион — трибуны с мусором после матча → D[6] (стадион/трибуны + мусор)
+    // новая → после: null
+    {name:'Стадион Металлург',status:'новая',diff:3,desc:'Мусор после матча — трибуны и периметр завалены стаканами, упаковками и другими отходами болельщиков.',org:'Алия Нурмаганбетова',vol:5,lat:51.2260,lng:51.3740,before:D[6],after:null,donate:null,chat:[{n:'Алия Н.',t:'После вчерашнего матча свалка просто жуть...',w:'08:00'},{n:'Берик Т.',t:'Приду с утра, помогу разобраться с трибунами.',w:'08:30'},{n:'Алия Н.',t:'Нужно согласование с администрацией стадиона.',w:'09:00'}]},
+
+    // 8. Мирный — крупная дворовая свалка → D[7] (крупная свалка во дворе)
+    // в работе → после: null
+    {name:'Микрорайон Мирный',status:'в работе',diff:4,desc:'Ликвидация стихийной свалки во дворах — старая мебель, металлолом, строительный мусор. Работаем 3-й день.',org:'Павел Григорьев',vol:10,lat:51.2420,lng:51.3560,before:D[7],after:null,donate:{text:'Нужна газель для вывоза крупногабаритного мусора и аренда прицепа на 2 дня. Также не хватает мешков повышенной прочности (200 шт). Ориентировочно ~12 000 ₸.',phone:'+77778597323'},chat:[{n:'Павел Г.',t:'Вывезли первые 5 машин мусора, продолжаем!',w:'11:00'},{n:'Сания М.',t:'Жители района очень благодарны, помогают сами.',w:'13:00'},{n:'Павел Г.',t:'Ещё 2-3 дня и полностью закончим.',w:'17:00'}]},
+
+    // 9. Чайка — старая облезлая детская площадка → D[8] (запущенная площадка)
+    // выполнена → после: яркая детская площадка C[3]
+    {name:'Детский парк Чайка',status:'выполнена',diff:2,desc:'Покраска детских площадок в яркие цвета завершена. Горки, качели и карусели сверкают как новые!',org:'Гульмира Есенова',vol:18,lat:51.2290,lng:51.3820,before:D[8],after:C[3],donate:null,chat:[{n:'Гульмира Е.',t:'Все горки и качели покрашены в яркие цвета!',w:'14:00'},{n:'Рустем И.',t:'Дети уже играют, родители говорят спасибо!',w:'14:30'},{n:'Гульмира Е.',t:'Следующий субботник — клумбы вокруг парка.',w:'15:00'}]},
+
+    // 10. Гагарина — пустырь с хаотичным мусором → D[9] (пустырь + рассыпанный мусор)
+    // новая → после: null
+    {name:'Северный район, ул. Гагарина',status:'новая',diff:3,desc:'Замусоренный пустырь между домами — бутылки, пакеты, старые покрышки. Давно никто не убирал.',org:'Тимур Хасанов',vol:4,lat:51.2460,lng:51.3620,before:D[9],after:null,donate:null,chat:[{n:'Тимур Х.',t:'Пустырь давно никто не убирал, нужна помощь.',w:'10:00'},{n:'Ирина П.',t:'Я могу в эти выходные, запишите меня.',w:'10:30'},{n:'Тимур Х.',t:'Отлично, собираемся в субботу в 10 утра.',w:'11:00'}]},
+
+    // 11. Площадь Абая — клумба с сорняками → D[10] (запущенные клумбы/газон)
+    // в работе → после: null
+    {name:'Площадь Абая',status:'в работе',diff:1,desc:'Высадка цветов на клумбах площади — 500 кустов роз и бархатцев. Город станет красивее!',org:'Айгуль Сейткали',vol:22,lat:51.2330,lng:51.3667,before:D[10],after:null,donate:null,chat:[{n:'Айгуль С.',t:'Рассада уже завезена, 500 кустов роз и бархатцев!',w:'09:30'},{n:'Назгуль А.',t:'Красота! Площадь будет самой цветущей.',w:'10:00'},{n:'Берик Т.',t:'Я с лопатой уже на месте, где начинаем?',w:'10:15'}]},
+
+    // 12. Набережная у моста — промышленные отходы у воды → D[11] (берег с тёмными отходами)
+    // новая → после: null
+    {name:'Набережная у моста',status:'новая',diff:5,desc:'Промышленные отходы у реки — обнаружены опасные вещества. Требуются специалисты и защитное снаряжение.',org:'Дмитрий Ковалёв',vol:2,lat:51.2245,lng:51.3600,before:D[11],after:null,donate:{text:'Опасные отходы требуют защитных костюмов (ОЗК), респираторов и герметичных контейнеров. Без спецснаряжения туда нельзя. Нужно ~20 000 ₸ на экипировку 5 человек.',phone:'+77778597323'},chat:[{n:'Дмитрий К.',t:'Обнаружены опасные отходы, нужны специалисты.',w:'09:00'},{n:'Павел Г.',t:'Надо сообщить в экологическую службу города.',w:'09:30'},{n:'Дмитрий К.',t:'Заявка подана, ждём реакции властей.',w:'10:00'}]},
+
+    // 13. Рощица у школы — роща с листьями и ветками → D[12] (лесная зона с мусором)
+    // выполнена → после: чистая ухоженная роща C[4]
+    {name:'Рощица у школы №12',status:'выполнена',diff:2,desc:'Субботник — уборка листьев и веток. Пришло 30 человек, рощица сияет чистотой. Отличная работа!',org:'Назгуль Ахметова',vol:30,lat:51.2380,lng:51.3480,before:D[12],after:C[4],donate:null,chat:[{n:'Назгуль А.',t:'30 человек пришло! Рощица сияет чистотой.',w:'13:00'},{n:'Рустем И.',t:'Дети из школы тоже участвовали, молодцы!',w:'13:20'},{n:'Гульмира Е.',t:'Лучший субботник за этот год, спасибо всем!',w:'14:00'}]},
+
+    // 14. Ж/д ул. Ленина — забор с граффити и мусор → D[13] (забор + мусор вдоль улицы)
+    // в работе → после: null
+    {name:'Железнодорожный район, ул. Ленина',status:'в работе',diff:3,desc:'Покраска длинного забора и уборка прилегающей территории. Половина готова — становится красиво!',org:'Серик Байжанов',vol:9,lat:51.2200,lng:51.3700,before:D[13],after:null,donate:null,chat:[{n:'Серик Б.',t:'Забор длинный, нужны ещё 5-6 человек с кистями.',w:'10:00'},{n:'Тимур Х.',t:'Приду завтра утром, позову ещё пару друзей.',w:'10:30'},{n:'Серик Б.',t:'Половина забора уже готова, красиво выходит!',w:'15:00'}]},
+
+    // ══════════════════════════════════════════════
+    // 10 НОВЫХ МЕТОК — АЛМАТЫ
+    // ══════════════════════════════════════════════
+
+    // А1. Парк Горького — запущенные аллеи → D[4] (запущенная территория)
+    // новая, diff:4 → донат
+    {name:'Парк Горького, Алматы',status:'новая',diff:4,desc:'Исторический парк запущен: поваленные деревья, мусорные кучи, разбитые урны. Требует комплексного подхода.',org:'Возрождение Парка',vol:6,lat:43.2480,lng:76.9180,before:D[4],after:null,donate:{text:'Нужны пилы для спиленных деревьев, граблей 20 шт, новые урны (3 шт) и краска для восстановления лавочек. Бюджет ~15 000 ₸ на реставрацию.',phone:'+77778597323'},chat:[{n:'Ерлан',t:'Договорились с городом на вывоз крупного мусора.',w:'08:50'},{n:'Айя',t:'Я приду с командой в субботу утром!',w:'09:15'}]},
+
+    // А2. Набережная Есиль — берег с мусором → D[1] (берег + пластик)
+    // новая, diff:3
+    {name:'Набережная Есиль, Алматы',status:'новая',diff:3,desc:'Вдоль набережной накопился мусор после летнего сезона: бутылки, пакеты, окурки на 600 м берега.',org:'Берег Чистоты',vol:9,lat:43.2420,lng:76.9350,before:D[1],after:null,donate:null,chat:[{n:'Нургуль',t:'Планируем начать в пятницу вечером.',w:'17:45'},{n:'Адиль',t:'Я с тремя друзьями, будем!',w:'18:10'}]},
+
+    // А3. Бутаковка — горная тропа с мусором → D[11] (тёмные отходы на природе)
+    // новая, diff:5 → донат
+    {name:'Ущелье Бутаковка, Алматы',status:'новая',diff:5,desc:'Туристическая тропа засорена — пластик, стекло, консервные банки. Труднодоступное место в горах.',org:'ГорноЭко',vol:4,lat:43.1180,lng:76.9950,before:D[11],after:null,donate:{text:'Горный маршрут требует треккинговых рюкзаков-мусоросборников, страховочного снаряжения и защитных перчаток. Без экипировки на склон нельзя. Нужно ~18 000 ₸.',phone:'+77778597323'},chat:[{n:'Арман',t:'Место очень загрязнено, нужны опытные люди.',w:'07:30'},{n:'Дина',t:'Готова участвовать, есть опыт горных походов.',w:'08:00'}]},
+
+    // А4. Медеу — вокруг катка, мусор → D[6] (территория стадиона/объекта с мусором)
+    // в работе, diff:2
+    {name:'Каток Медеу — периметр',status:'в работе',diff:2,desc:'Уборка территории вокруг катка после туристического сезона. Собираем мусор по секторам.',org:'Чистый Медеу',vol:14,lat:43.1550,lng:77.0200,before:D[6],after:null,donate:null,chat:[{n:'Карина',t:'Сектор А полностью готов, переходим к Б.',w:'11:00'},{n:'Олжас',t:'Принёс дополнительные мешки, хватит на всех.',w:'11:20'}]},
+
+    // А5. Парк 28 Панфиловцев — аллеи с мусором → D[0] (мусор у парка/аллеи)
+    // выполнена, diff:1 → after: C[5]
+    {name:'Парк 28 Панфиловцев, Алматы',status:'выполнена',diff:1,desc:'Быстрая уборка аллей парка — собрали листву и мусор за 2 часа. Исторический парк сияет!',org:'Алматы Зеленый',vol:25,lat:43.2600,lng:76.9430,before:D[0],after:C[5],donate:null,chat:[{n:'Жанар',t:'Команда отработала отлично, парк прекрасен!',w:'13:00'},{n:'Расул',t:'В следующий раз приду с ещё большей командой.',w:'13:30'}]},
+
+    // А6. Коктобе — склоны горы с мусором → D[9] (пустырь/склон с мусором)
+    // новая, diff:5 → донат
+    {name:'Склоны горы Коктобе, Алматы',status:'новая',diff:5,desc:'Популярный туристический маршрут захламлён. Крутые склоны, труднодоступные зоны, большой объём мусора.',org:'Чистый Альпинист',vol:3,lat:43.2250,lng:76.9700,before:D[9],after:null,donate:{text:'Крутые склоны требуют: верёвочная страховка, специальные рюкзаки-мусоросборники и защитная одежда. На команду из 8 человек нужно ~22 000 ₸.',phone:'+77778597323'},chat:[{n:'Максим',t:'Был там вчера — мусора на несколько тонн.',w:'09:00'},{n:'Светлана',t:'Готова организовать группу из 10 человек.',w:'09:30'}]},
+
+    // А7. Сайран — берег водохранилища → D[3] (крупный мусор у воды)
+    // в работе, diff:4 → донат
+    {name:'Водохранилище Сайран, Алматы',status:'в работе',diff:4,desc:'Берег водохранилища засорён после летнего купального сезона. Пластик, стекло, мангалы.',org:'Чистая Вода',vol:11,lat:43.2380,lng:76.8650,before:D[3],after:null,donate:{text:'Уборка у воды: нужны длинные сачки для мусора у берега, водостойкие перчатки и лодка для сбора мусора с воды. Аренда лодки ~10 000 ₸ на день.',phone:'+77778597323'},chat:[{n:'Азиз',t:'Сегодня убрали южный берег полностью.',w:'14:00'},{n:'Мадина',t:'Северный берег ждёт нас в субботу!',w:'14:30'}]},
+
+    // А8. Горпарк (ЦПКиО) — запущенный уголок → D[8] (старая запущенная площадка/парк)
+    // выполнена, diff:2 → after: C[6]
+    {name:'Центральный парк, Алматы',status:'выполнена',diff:2,desc:'Покраска скамеек и уборка центрального парка. 18 скамеек обновлены, территория сверкает чистотой!',org:'Городские Волонтёры',vol:16,lat:43.2500,lng:76.9280,before:D[8],after:C[6],donate:null,chat:[{n:'Алима',t:'18 скамеек покрасили за один день!',w:'15:30'},{n:'Нурлан',t:'Парк преобразился, горожане благодарят.',w:'16:00'}]},
+
+    // А9. Алматинка — речка в черте города → D[2] (загрязнённая территория у воды)
+    // новая, diff:3
+    {name:'Река Алматинка — берег',status:'новая',diff:3,desc:'Берег реки в черте города захламлён бытовым мусором. Несмотря на малые размеры — работы на целый день.',org:'Речной Дозор',vol:7,lat:43.2520,lng:76.9550,before:D[2],after:null,donate:null,chat:[{n:'Тамара',t:'Речка почти пересохла и завалена мусором.',w:'10:00'},{n:'Ибрагим',t:'Запишите меня, приду с семьёй.',w:'10:30'}]},
+
+    // А10. Микрорайон Алатау — двор → D[7] (дворовая свалка)
+    // в работе, diff:1
+    {name:'Микрорайон Алатау — двор',status:'в работе',diff:1,desc:'Жители объединились и убирают двор своими силами. Совместная работа объединяет соседей!',org:'Соседи Алатау',vol:28,lat:43.2170,lng:76.8450,before:D[7],after:null,donate:null,chat:[{n:'Бабушка Роза',t:'Молодёжь, спасибо! Наконец чистый двор.',w:'14:00'},{n:'Серик',t:'Завтра привезу тачку для крупного мусора.',w:'14:30'},{n:'Аида',t:'Я организую детей из нашего подъезда!',w:'15:00'}]}
+  ];
+
+  var mods=SS.getModifiedBase();
+  basePoints.forEach(function(bp){
+    if(mods[bp.name]){var mod=mods[bp.name];if(mod.status!==undefined)bp.status=mod.status;if(mod.after!==undefined)bp.after=mod.after;if(mod.chat!==undefined)bp.chat=mod.chat;}
+    window.appPoints.push(bp);
+  });
+  SS.getCustom().forEach(function(cp){window.appPoints.push(cp);});
+  window.applyFiltersAndRender();
+
+  document.getElementById('filterSelect').addEventListener('change',window.applyFiltersAndRender);
+  document.getElementById('filterDiffSelect').addEventListener('change',window.applyFiltersAndRender);
+  document.getElementById('searchInput').addEventListener('input',window.applyFiltersAndRender);
+
+  var urlParams=new URLSearchParams(window.location.search);
+  var pLat=urlParams.get('lat'),pLng=urlParams.get('lng');
+  if(pLat&&pLng){var tLat=parseFloat(pLat),tLng=parseFloat(pLng);window.map.setView([tLat,tLng],16);setTimeout(function(){window.markersLayers.forEach(function(mk){var ll=mk.getLatLng();if(Math.abs(ll.lat-tLat)<0.0001&&Math.abs(ll.lng-tLng)<0.0001)mk.openPopup();});},600);}
+
+  window.map.on('click',function(e){if(!window.isAddingMarkerMode)return;_pendingLatLng=e.latlng;openModal();});
+
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&e.target&&e.target.classList.contains('chat-input')){var uid=e.target.id.replace('inp_','');var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid;});if(m)window.sendMsg(uid,m.name);}
+    if(e.key==='Escape'&&document.getElementById('modal-overlay').classList.contains('show'))closeModal();
+  });
+};
+</script>
