@@ -1,8 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Карта волонтеров чистоты</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;}
+
+/* ── WELCOME SCREEN ── */
+#welcome-screen{position:fixed;inset:0;background:linear-gradient(145deg,#0d3320 0%,#1e8549 60%,#27ae60 100%);z-index:99999;display:flex;align-items:center;justify-content:center;}
+#welcome-screen.hidden{display:none;}
+.welcome-card{background:#fff;border-radius:24px;padding:40px 36px;width:420px;max-width:92vw;box-shadow:0 32px 80px rgba(0,0,0,0.35);text-align:center;animation:wshow 0.4s cubic-bezier(.22,.68,0,1.2);}
+@keyframes wshow{from{transform:scale(0.85) translateY(30px);opacity:0;}to{transform:none;opacity:1;}}
+.welcome-logo{font-size:52px;margin-bottom:12px;line-height:1;}
+.welcome-title{font-size:22px;font-weight:800;color:#132017;margin-bottom:6px;}
+.welcome-sub{font-size:13px;color:#5e7867;margin-bottom:28px;line-height:1.5;}
+.welcome-label{font-size:12px;font-weight:700;color:#5e7867;text-transform:uppercase;letter-spacing:0.06em;text-align:left;margin-bottom:6px;display:block;}
+.welcome-input{width:100%;border:2px solid #dce5dc;border-radius:12px;padding:12px 16px;font-size:16px;outline:none;font-family:Arial,sans-serif;color:#132017;transition:border-color 0.2s;text-align:center;}
+.welcome-input:focus{border-color:#1e8549;}
+.welcome-input.error{border-color:#e53935;animation:shake 0.3s ease;}
+.welcome-hint{font-size:11px;color:#9db8a5;margin-top:8px;margin-bottom:20px;}
+.welcome-btn{width:100%;padding:14px;border-radius:12px;border:none;background:#1e8549;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:Arial,sans-serif;transition:background 0.15s,transform 0.1s;letter-spacing:0.03em;}
+.welcome-btn:hover{background:#166b3a;transform:translateY(-1px);}
+.welcome-btn:active{transform:translateY(0);}
+
+/* ── USER CHIP in header ── */
+.user-chip{display:flex;align-items:center;gap:8px;background:#f6f9f6;border:1px solid #dce5dc;border-radius:9999px;padding:5px 12px 5px 5px;cursor:pointer;transition:background 0.15s;}
+.user-chip:hover{background:#edf3ed;}
+.user-av{width:28px;height:28px;border-radius:50%;background:#1e8549;color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.user-name-chip{font-size:13px;font-weight:700;color:#132017;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
 .app-header{display:flex;justify-content:space-between;align-items:center;background:#fff;padding:16px 24px;box-shadow:0 2px 12px rgba(0,0,0,0.05);border-radius:12px;margin-bottom:15px;flex-wrap:wrap;gap:10px;}
 .header-title{font-size:18px;font-weight:700;color:#132017;}
 .header-subtitle{font-size:11px;color:#5e7867;margin-top:3px;}
@@ -22,6 +52,10 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
 #map{position:relative!important;width:100%;height:550px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.08);border:1px solid #dce5dc;z-index:1;background:#e5e9e5;}
 #map-hint{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#132017;color:#fff;padding:10px 22px;border-radius:9999px;font-size:13px;font-weight:600;z-index:2000;pointer-events:none;opacity:0;transition:opacity 0.2s;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.25);}
 #map-hint.show{opacity:1;}
+#sync-status{position:fixed;top:16px;right:16px;background:#132017;color:#fff;padding:8px 16px;border-radius:9999px;font-size:12px;font-weight:600;z-index:3000;opacity:0;transition:opacity 0.3s;pointer-events:none;}
+#sync-status.show{opacity:1;}
+#sync-status.success{background:#1e8549;}
+#sync-status.error{background:#e53935;}
 #modal-overlay{display:none;position:fixed;inset:0;background:rgba(10,25,15,0.45);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
 #modal-overlay.show{display:flex;}
 #modal{background:#fff;border-radius:20px;width:440px;max-width:95vw;box-shadow:0 24px 64px rgba(0,0,0,0.22);overflow:hidden;animation:mshow 0.22s ease;}
@@ -49,7 +83,6 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
 .photo-upload-sub{font-size:10px;color:#9db8a5;margin-top:2px;}
 .photo-preview{width:100%;height:90px;object-fit:cover;border-radius:8px;display:none;}
 .photo-clear{position:absolute;top:4px;right:6px;background:#e53935;color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:13px;line-height:20px;text-align:center;cursor:pointer;display:none;z-index:2;}
-/* Donate toggle block in modal */
 .donate-toggle-block{background:#fffbf0;border:1px solid #ebdcb2;border-radius:10px;padding:12px 14px;}
 .donate-toggle-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
 .donate-toggle-title{font-size:12px;font-weight:700;color:#8f6d13;display:flex;align-items:center;gap:6px;}
@@ -62,7 +95,6 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
 .toggle-switch input:checked+.toggle-slider:before{transform:translateX(18px);}
 .donate-fields{margin-top:10px;display:flex;flex-direction:column;gap:8px;}
 .donate-hint{font-size:10px;color:#9db8a5;margin-top:2px;}
-
 .modal-footer{padding:12px 24px 20px;display:flex;flex-direction:column;gap:12px;border-top:1px solid #f0f4f0;}
 .modal-footer-buttons{display:flex;gap:10px;}
 .btn-cancel{flex:1;padding:10px;border-radius:10px;border:1.5px solid #dce5dc;background:#f6f9f6;color:#5e7867;font-size:13px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;}
@@ -104,10 +136,10 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
 .chat-messages{max-height:130px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
 .chat-msg{display:flex;gap:6px;align-items:flex-start;}
 .chat-av{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#1e8549;}
-.chat-av-you{background:#5e7867;}
+.chat-av-me{background:#5e7867;}
 .chat-bubble{flex:1;}
 .chat-name{font-size:10px;font-weight:700;color:#1e8549;margin-bottom:1px;display:flex;justify-content:space-between;align-items:center;}
-.chat-name-you{color:#5e7867!important;}
+.chat-name-me{color:#5e7867!important;}
 .chat-text{font-size:11px;color:#132017;line-height:1.4;background:#f6f9f6;border-radius:0 8px 8px 8px;padding:4px 7px;}
 .chat-time{font-size:9px;color:#9db8a5;margin-top:1px;text-align:right;}
 .chat-input-row{display:flex;gap:6px;margin-top:8px;}
@@ -119,50 +151,83 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
 .action-btn{display:block;width:100%;margin-top:10px;padding:10px 0;border-radius:9px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all 0.15s;font-family:Arial,sans-serif;}
 .btn-join{background:#1e8549;color:#fff;}.btn-join:hover{background:#166b3a;}
 .btn-decline{background:#fde8e6;color:#d32e22;}.btn-decline:hover{background:#fbc8c4;}
-.btn-del-msg{color:#e53935;cursor:pointer;font-size:11px;font-weight:bold;padding:0 4px;}
+.btn-del-msg{color:#e53935;cursor:pointer;font-size:11px;font-weight:bold;padding:0 4px;background:none;border:none;}
+.public-badge{display:inline-block;background:#e6f0ff;color:#1a4fa3;border-radius:9999px;padding:2px 8px;font-size:11px;font-weight:700;}
+.owner-badge{display:inline-block;background:#fff8e1;color:#b8860b;border-radius:9999px;padding:2px 8px;font-size:11px;font-weight:700;}
 @keyframes shake{0%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}100%{transform:translateX(0);}}
 </style>
+</head>
+<body>
 
-<div style="padding:20px;">
-  <div class="app-header">
-    <div>
-      <div class="header-title">Карта волонтеров чистоты</div>
-      <div class="header-subtitle">Отметь место, чтобы внести свой вклад в чистоту города</div>
-    </div>
-    <div class="header-right">
-      <div class="legend">
-        <div class="legend-item"><span class="dot dot-red"></span>Новый</div>
-        <div class="legend-item"><span class="dot dot-orange"></span>В работе</div>
-        <div class="legend-item"><span class="dot dot-green"></span>Выполнено</div>
-      </div>
-      <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск места...">
-      <select id="filterSelect" class="filter-select">
-        <option value="all">Все статусы</option>
-        <option value="новая">Новая</option>
-        <option value="в работе">В работе</option>
-        <option value="выполнена">Выполнена</option>
-      </select>
-      <select id="filterDiffSelect" class="filter-select">
-        <option value="all">Вся сложность</option>
-        <option value="1">★☆☆☆☆ (Очень легко)</option>
-        <option value="2">★★☆☆☆ (Легко)</option>
-        <option value="3">★★★☆☆ (Средне)</option>
-        <option value="4">★★★★☆ (Сложно)</option>
-        <option value="5">★★★★★ (Очень сложно)</option>
-      </select>
-      <button id="addPlaceBtn" class="btn-add-place" onclick="toggleAddMarkerMode()">＋ Отметить место</button>
-    </div>
+<!-- ══════════════════════════════════════════
+     WELCOME / USERNAME SCREEN
+══════════════════════════════════════════ -->
+<div id="welcome-screen">
+  <div class="welcome-card">
+    <div class="welcome-logo">🌿</div>
+    <div class="welcome-title">Карта волонтёров</div>
+    <div class="welcome-sub">Присоединяйтесь к уборке города!<br>Введите ваше имя — оно будет видно другим волонтёрам.</div>
+    <label class="welcome-label">Ваше имя</label>
+    <input id="welcome-name-input" class="welcome-input" placeholder="Например: Айгерим" maxlength="30" autocomplete="off"/>
+    <div class="welcome-hint">Имя будет отображаться в чате, на метках и при участии в уборках</div>
+    <button class="welcome-btn" onclick="saveUsername()">Войти на карту →</button>
   </div>
-  <div id="map"></div>
-  <div id="map-hint">📍 Кликните на карту, чтобы выбрать место</div>
 </div>
 
-<!-- MODAL -->
+<!-- ══════════════════════════════════════════
+     MAIN APP
+══════════════════════════════════════════ -->
+<div id="app" style="display:none;">
+  <div style="padding:0;">
+    <div class="app-header">
+      <div>
+        <div class="header-title">Карта волонтеров чистоты</div>
+        <div class="header-subtitle">Отметь место, чтобы внести свой вклад в чистоту города</div>
+      </div>
+      <div class="header-right">
+        <div class="legend">
+          <div class="legend-item"><span class="dot dot-red"></span>Новый</div>
+          <div class="legend-item"><span class="dot dot-orange"></span>В работе</div>
+          <div class="legend-item"><span class="dot dot-green"></span>Выполнено</div>
+        </div>
+        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Поиск места...">
+        <select id="filterSelect" class="filter-select">
+          <option value="all">Все статусы</option>
+          <option value="новая">Новая</option>
+          <option value="в работе">В работе</option>
+          <option value="выполнена">Выполнена</option>
+        </select>
+        <select id="filterDiffSelect" class="filter-select">
+          <option value="all">Вся сложность</option>
+          <option value="1">★☆☆☆☆ Очень легко</option>
+          <option value="2">★★☆☆☆ Легко</option>
+          <option value="3">★★★☆☆ Средне</option>
+          <option value="4">★★★★☆ Сложно</option>
+          <option value="5">★★★★★ Очень сложно</option>
+        </select>
+        <!-- User chip -->
+        <div class="user-chip" onclick="promptChangeName()" title="Изменить имя">
+          <div class="user-av" id="header-av">?</div>
+          <span class="user-name-chip" id="header-name">...</span>
+        </div>
+        <button id="addPlaceBtn" class="btn-add-place" onclick="toggleAddMarkerMode()">＋ Отметить место</button>
+      </div>
+    </div>
+    <div id="map"></div>
+    <div id="map-hint">📍 Кликните на карту, чтобы выбрать место</div>
+  </div>
+</div>
+
+<div id="sync-status"></div>
+
+<!-- ══════════════════════════════════════════
+     ADD MARK MODAL
+══════════════════════════════════════════ -->
 <div id="modal-overlay">
   <div id="modal">
     <div class="modal-header">
       <h3>📍 Новое место уборки</h3>
-      <p>Заполните информацию — это поможет другим волонтёрам</p>
+      <p id="modal-author-line">Добавляет: ...</p>
     </div>
     <div class="modal-body">
       <div>
@@ -191,7 +256,6 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
         </div>
         <div class="stars-hint" id="stars-hint">Выберите сложность от 1 до 5</div>
       </div>
-      <!-- DONATE TOGGLE — показывается только при diff 4-5 -->
       <div id="donate-toggle-wrap" style="display:none;">
         <div class="donate-toggle-block">
           <div class="donate-toggle-header" onclick="toggleDonateFields(event)">
@@ -225,6 +289,15 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
           </div>
         </div>
       </div>
+      <div style="background:#e6f9f0;border:1px solid #b2dfc5;border-radius:10px;padding:12px 14px;">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+          <input type="checkbox" id="m-public" style="width:16px;height:16px;cursor:pointer;accent-color:#1e8549;"/>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1e8549;">🌍 Сделать метку общественной</div>
+            <div style="font-size:11px;color:#5e7867;margin-top:2px;">Метка будет видна всем пользователям</div>
+          </div>
+        </label>
+      </div>
     </div>
     <div class="modal-footer">
       <div class="modal-footer-buttons">
@@ -232,7 +305,7 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
         <button class="btn-confirm" onclick="confirmMark()">✅ Добавить метку</button>
       </div>
       <div class="modal-donate-note">
-        💡 <b>Для создателя:</b> При сложности 4–5 звёзд в карточке появится блок «☕ Поддержать уборку» с номером <b>+77778597323</b> для перевода средств на инвентарь. Обратитесь ко мне — скажите сколько и зачем вам деньги при уборке в <b>TG или WhatsApp</b>, также отправьте скрин метки и ваш номер для переводов.
+        💡 При сложности 4–5 звёзд появится блок доната с номером <b>+77778597323</b>
       </div>
     </div>
   </div>
@@ -241,125 +314,190 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
 <input type="file" id="popup-file-after" accept="image/*" style="display:none;" onchange="handleAfterPhotoUploaded(this)"/>
 
 <script>
-window.map=null; window.appPoints=[]; window.markersLayers=[]; window.isAddingMarkerMode=false;
-var _pendingLatLng=null, _pickedDiff=3, _photoBeforeData=null, _currentAfterPhotoTargetUid=null;
-var DIFF_LABELS=['','Очень легко 😊','Легко 🙂','Средне 😐','Сложно 😤','Очень сложно 💪'];
+// ════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════
+var JSONBIN_KEY    = '$2a$10$e.BCPaLrRSQltnw/odSU9OHpzycRVLsbRBvmumAhkPtW1.QMJtT52';
+var JSONBIN_BIN_ID = '6a1320f96610dd3ae89ad865';
+var JSONBIN_URL    = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID;
 
-// ── Фото-пул: подобраны по смыслу ──
-// dirty[0] = куча мусора у дороги/парка → Парк Победы (вход захламлён)
-// dirty[1] = берег реки с пластиком → Набережная р. Урал
-// dirty[2] = торговые ряды + мусор → Рынок Зенков
-// dirty[3] = строительный мусор/свалка → Зачаганск
-// dirty[4] = двор/сквер с мусором → ДК Металлург
-// dirty[5] = голая аллея/земля без деревьев → Улица Достык (до посадки)
-// dirty[6] = трибуны/стадион с мусором → Стадион Металлург
-// dirty[7] = крупная дворовая свалка → Микрорайон Мирный
-// dirty[8] = старая детская площадка → Парк Чайка
-// dirty[9] = пустырь с мусором → Гагарина
-// dirty[10] = клумба с сорняками → Площадь Абая
-// dirty[11] = берег с промышленными отходами → Набережная у моста
-// dirty[12] = роща с листьями и ветками → Рощица школа №12
-// dirty[13] = забор + мусор вдоль улицы → Ж/д район ул.Ленина
-// clean[0]  = чистый парк/вход → Парк Победы после
-// clean[1]  = чистый берег реки → Рынок Зенков после
-// clean[2]  = зелёная аллея с деревьями → Улица Достык после
-// clean[3]  = яркая детская площадка → Парк Чайка после
-// clean[4]  = чистая ухоженная роща → Рощица школа №12 после
-// clean[5+] = чистые места Алматы
+// ════════════════════════════════════════════════════
+// GLOBALS
+// ════════════════════════════════════════════════════
+window.map = null;
+window.appPoints = [];
+window.markersLayers = [];
+window.isAddingMarkerMode = false;
+var _pendingLatLng = null, _pickedDiff = 3, _photoBeforeData = null, _currentAfterPhotoTargetUid = null;
+var DIFF_LABELS = ['','Очень легко 😊','Легко 🙂','Средне 😐','Сложно 😤','Очень сложно 💪'];
 
-var PH={
-  dirty:[
-    'https://avatars.mds.yandex.net/i?id=3050dccc7f66998f4fbcb4b62ea707c4_l-12484740-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=2e44afbf3e24da4874f23399cf39cfac88581b47-12536664-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=e4eba51382e562edd6887d6f357e60304c97f25f-6946649-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=4e1e796be69c2d3a354590d190d8e9816988780d-6222399-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=a42ecca80ee1ffe406ddc77d99e61a95892cfbdd-4033955-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=143a1e605590438b5c25caf3e73095b9deae7ceb-5161097-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=5a1298d5c15af5bbf79b8b7e5042004fb9e9bec6-4428301-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=090387e54aba76ac767952ad136a4bc93b1acd4b-12856979-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=0bbbd92ede290c445083e7b57f4ceab7301cc3b8-12569850-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=40b444bfd34db8545a489b88876322a7dda1f1d8-9701523-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=fd788ec042ecc5f6ba8d2ee8cf5f14a9b35c0ad6-5255574-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=857da9d87e64e095c934f3326a082a40260db37b-5312482-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=2c04cdcb519df5366c80773348420c5a539fdb1d-11924570-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=f7e75f10aae0dd390269973e304f6b2420331625-4893181-images-thumbs&n=13'
-  ],
-  clean:[
-    'https://avatars.mds.yandex.net/i?id=b5c5788ceac9fb3798435f559f6f1d53756f1ae0-12310327-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=e311adcae1f1f795919868c0865f660281332eac-4552383-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=bf6cc4f8ea8dc007c212dc0233da0a61e91cfc50-5858269-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=5a1298d5c15af5bbf79b8b7e5042004fb9e9bec6-4428301-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=0305885debb58cfbed118833c53ce921d08592b0-8210080-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=40b444bfd34db8545a489b88876322a7dda1f1d8-9701523-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=090387e54aba76ac767952ad136a4bc93b1acd4b-12856979-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=fd788ec042ecc5f6ba8d2ee8cf5f14a9b35c0ad6-5255574-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=857da9d87e64e095c934f3326a082a40260db37b-5312482-images-thumbs&n=13',
-    'https://avatars.mds.yandex.net/i?id=2c04cdcb519df5366c80773348420c5a539fdb1d-11924570-images-thumbs&n=13'
-  ]
+// ════════════════════════════════════════════════════
+// USERNAME
+// ════════════════════════════════════════════════════
+function getUsername(){ return localStorage.getItem('vol_username') || ''; }
+function setUsername(n){ localStorage.setItem('vol_username', n); }
+function isMe(authorName){ return authorName === getUsername(); }
+
+function saveUsername(){
+  var val = document.getElementById('welcome-name-input').value.trim();
+  if(!val){
+    document.getElementById('welcome-name-input').classList.add('error');
+    setTimeout(function(){ document.getElementById('welcome-name-input').classList.remove('error'); }, 400);
+    return;
+  }
+  setUsername(val);
+  document.getElementById('welcome-screen').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+  updateHeaderChip();
+  initApp();
+}
+
+function updateHeaderChip(){
+  var n = getUsername();
+  document.getElementById('header-av').textContent = n.charAt(0).toUpperCase();
+  document.getElementById('header-name').textContent = n;
+}
+
+function promptChangeName(){
+  var cur = getUsername();
+  var nw = prompt('Изменить имя (текущее: «' + cur + '»):', cur);
+  if(nw && nw.trim() && nw.trim() !== cur){
+    setUsername(nw.trim());
+    updateHeaderChip();
+    alert('Имя изменено на «' + nw.trim() + '»');
+  }
+}
+
+// ════════════════════════════════════════════════════
+// SYNC STATUS
+// ════════════════════════════════════════════════════
+function showSync(msg, type, duration){
+  var el = document.getElementById('sync-status');
+  el.textContent = msg;
+  el.className = 'show ' + (type||'');
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.className=''; }, duration||2500);
+}
+
+// ════════════════════════════════════════════════════
+// JSONBIN
+// ════════════════════════════════════════════════════
+window.loadPublicMarks = function(){
+  showSync('⏳ Загрузка меток...', '', 60000);
+  return fetch(JSONBIN_URL + '/latest', {
+    headers: { 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Meta': 'false' }
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(function(data){ showSync('✅ Загружено', 'success'); return { marks: data.marks||[] }; })
+  .catch(function(e){ console.error(e); showSync('⚠️ Ошибка загрузки', 'error'); return { marks:[] }; });
 };
 
-var SS={
-  key:function(n,s){return 'vol_'+n.replace(/[^a-z0-9]/gi,'_')+'_'+s;},
-  getJoined:function(n){return localStorage.getItem(SS.key(n,'joined'))==='1';},
-  setJoined:function(n,v){localStorage.setItem(SS.key(n,'joined'),v?'1':'0');},
-  getVolCount:function(n,base){var v=localStorage.getItem(SS.key(n,'vol'));return v!==null?parseInt(v):base;},
-  setVolCount:function(n,v){localStorage.setItem(SS.key(n,'vol'),String(v));},
-  getCustom:function(){try{return JSON.parse(localStorage.getItem('custom_pts')||'[]');}catch(e){return[];}},
-  saveCustom:function(arr){localStorage.setItem('custom_pts',JSON.stringify(arr));},
-  getModifiedBase:function(){try{return JSON.parse(localStorage.getItem('modified_base_pts')||'{}');}catch(e){return{};}},
-  saveModifiedBase:function(obj){localStorage.setItem('modified_base_pts',JSON.stringify(obj));}
+window.savePublicMarks = function(marks){
+  var toSave = marks.map(function(m){
+    var c = Object.assign({}, m);
+    if(c.before && c.before.length > 5000) c.before = null;
+    if(c.after  && c.after.length  > 5000) c.after  = null;
+    c.chat = c.chat ? c.chat.slice(-10) : [];
+    return c;
+  });
+  return fetch(JSONBIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+    body: JSON.stringify({ marks: toSave })
+  }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
 };
 
+window.pushMarkToPublic = function(name){
+  var mark = window.appPoints.find(function(p){ return p.name===name; });
+  if(!mark){ alert('Метка не найдена'); return; }
+  showSync('⏳ Публикация...', '', 60000);
+  window.loadPublicMarks().then(function(data){
+    var pubs = data.marks || [];
+    if(pubs.find(function(m){ return m.name===name; })){
+      showSync('ℹ️ Уже опубликована', 'success');
+      alert('Метка «'+name+'» уже есть в общем доступе!');
+      return;
+    }
+    var nm = Object.assign({}, mark);
+    nm.custom = false; nm.public = true;
+    nm.publishedAt = new Date().toISOString();
+    pubs.push(nm);
+    return window.savePublicMarks(pubs).then(function(){
+      mark.public = true;
+      SS.saveCustom(window.appPoints.filter(function(p){ return p.custom; }));
+      showSync('✅ Опубликовано!', 'success');
+      alert('✅ Метка «'+name+'» теперь видна всем!');
+      window.applyFiltersAndRender();
+    });
+  }).catch(function(e){ showSync('❌ Ошибка', 'error'); alert('Ошибка: '+e.message); });
+};
+
+// Удаление публичной метки из JSONBin
+window.deletePublicMark = function(name){
+  if(!confirm('Удалить публичную метку «'+name+'» для всех пользователей?')) return;
+  showSync('⏳ Удаление...', '', 60000);
+  window.loadPublicMarks().then(function(data){
+    var pubs = (data.marks||[]).filter(function(m){ return m.name !== name; });
+    return window.savePublicMarks(pubs).then(function(){
+      // Удаляем и локально
+      window.appPoints = window.appPoints.filter(function(p){ return p.name !== name; });
+      SS.saveCustom(window.appPoints.filter(function(p){ return p.custom; }));
+      showSync('✅ Удалено', 'success');
+      window.applyFiltersAndRender();
+    });
+  }).catch(function(e){ showSync('❌ Ошибка удаления', 'error'); alert('Ошибка: '+e.message); });
+};
+
+// ════════════════════════════════════════════════════
+// LOCAL STORAGE
+// ════════════════════════════════════════════════════
+var SS = {
+  key: function(n,s){ return 'vol_'+n.replace(/[^a-z0-9]/gi,'_')+'_'+s; },
+  getJoined:       function(n){ return localStorage.getItem(SS.key(n,'joined'))==='1'; },
+  setJoined:       function(n,v){ localStorage.setItem(SS.key(n,'joined'),v?'1':'0'); },
+  getVolCount:     function(n,base){ var v=localStorage.getItem(SS.key(n,'vol')); return v!==null?parseInt(v):base; },
+  setVolCount:     function(n,v){ localStorage.setItem(SS.key(n,'vol'),String(v)); },
+  getCustom:       function(){ try{ return JSON.parse(localStorage.getItem('custom_pts')||'[]'); }catch(e){ return []; } },
+  saveCustom:      function(arr){ localStorage.setItem('custom_pts',JSON.stringify(arr)); },
+  getModifiedBase: function(){ try{ return JSON.parse(localStorage.getItem('modified_base_pts')||'{}'); }catch(e){ return {}; } },
+  saveModifiedBase:function(obj){ localStorage.setItem('modified_base_pts',JSON.stringify(obj)); }
+};
+
+// ════════════════════════════════════════════════════
+// UI HELPERS
+// ════════════════════════════════════════════════════
 function pickStar(v){
   _pickedDiff=v;
-  document.querySelectorAll('.star-pick').forEach(function(s){s.classList.toggle('active',parseInt(s.dataset.v)<=v);});
+  document.querySelectorAll('.star-pick').forEach(function(s){ s.classList.toggle('active',parseInt(s.dataset.v)<=v); });
   document.getElementById('stars-hint').textContent=DIFF_LABELS[v];
-  // Показать/скрыть блок доната
   var wrap=document.getElementById('donate-toggle-wrap');
-  if(v>=4){wrap.style.display='block';}
-  else{
-    wrap.style.display='none';
-    document.getElementById('donate-toggle-cb').checked=false;
-    document.getElementById('donate-fields').style.display='none';
-  }
+  if(v>=4){ wrap.style.display='block'; }
+  else{ wrap.style.display='none'; document.getElementById('donate-toggle-cb').checked=false; document.getElementById('donate-fields').style.display='none'; }
 }
 
 function toggleDonateFields(evt){
   if(evt) evt.preventDefault();
   var cb=document.getElementById('donate-toggle-cb');
-  if(cb){
-    cb.checked=!cb.checked;
-    var ff=document.getElementById('donate-fields');
-    if(ff) ff.style.display=cb.checked?'flex':'none';
-  }
+  if(cb){ cb.checked=!cb.checked; document.getElementById('donate-fields').style.display=cb.checked?'flex':'none'; }
 }
-// Реальный onchange чекбокса при его прямом изменении
-document.addEventListener('DOMContentLoaded',function(){
-  var cb=document.getElementById('donate-toggle-cb');
-  if(cb){
-    cb.addEventListener('change',function(){
-      var ff=document.getElementById('donate-fields');
-      if(ff) ff.style.display=cb.checked?'flex':'none';
-    });
-  }
-});
 
 function handlePhoto(input,which){
-  var file=input.files[0];if(!file)return;
+  var file=input.files[0]; if(!file) return;
   var reader=new FileReader();
   reader.onload=function(e){
     if(which==='before'){
       _photoBeforeData=e.target.result;
       var img=document.getElementById('prev-before');
-      img.src=e.target.result;img.style.display='block';
+      img.src=e.target.result; img.style.display='block';
       document.getElementById('box-before-inner').style.display='none';
       document.getElementById('clear-before').style.display='block';
     }
-  };reader.readAsDataURL(file);
+  };
+  reader.readAsDataURL(file);
 }
 
 function clearPhoto(e,which){
-  if(e&&e.stopPropagation){e.stopPropagation();e.preventDefault();}
+  if(e&&e.stopPropagation){ e.stopPropagation(); e.preventDefault(); }
   if(which==='before'){
     _photoBeforeData=null;
     document.getElementById('prev-before').style.display='none';
@@ -371,6 +509,8 @@ function clearPhoto(e,which){
 }
 
 function openModal(){
+  var uname = getUsername();
+  document.getElementById('modal-author-line').textContent = 'Добавляет: ' + uname;
   document.getElementById('m-name').value='';
   document.getElementById('m-desc').value='';
   document.getElementById('m-status').value='новая';
@@ -378,7 +518,8 @@ function openModal(){
   document.getElementById('donate-toggle-cb').checked=false;
   document.getElementById('donate-fields').style.display='none';
   document.getElementById('donate-toggle-wrap').style.display='none';
-  pickStar(3);clearPhoto(null,'before');
+  document.getElementById('m-public').checked=false;
+  pickStar(3); clearPhoto(null,'before');
   document.getElementById('modal-overlay').classList.add('show');
 }
 
@@ -388,239 +529,370 @@ window.closeModal=function(){
 };
 
 window.confirmMark=function(){
-  var name=document.getElementById('m-name').value.trim();
-  var desc=document.getElementById('m-desc').value.trim();
-  var status=document.getElementById('m-status').value;
-  if(!name){shakeField('m-name');return;}
-  if(!desc){shakeField('m-desc');return;}
+  var name   = document.getElementById('m-name').value.trim();
+  var desc   = document.getElementById('m-desc').value.trim();
+  var status = document.getElementById('m-status').value;
+  var isPub  = document.getElementById('m-public').checked;
+  if(!name){ shakeField('m-name'); return; }
+  if(!desc){ shakeField('m-desc'); return; }
+
   var donate=null;
   var cb=document.getElementById('donate-toggle-cb');
-  if(_pickedDiff>=4 && cb && cb.checked){
+  if(_pickedDiff>=4&&cb&&cb.checked){
     var dt=document.getElementById('m-donate-text').value.trim();
-    donate={
-      text:dt||'Уборка этого места требует серьёзного инвентаря. Ваш донат пойдёт на закупку мешков, перчаток и оборудования.',
-      phone:'+77778597323'
-    };
+    donate={ text:dt||'Уборка требует серьёзного инвентаря.', phone:'+77778597323' };
   }
-  var pt={name:name,status:status,diff:_pickedDiff,desc:desc,org:'Вы',vol:0,lat:_pendingLatLng.lat,lng:_pendingLatLng.lng,before:_photoBeforeData,after:null,chat:[],custom:true,donate:donate};
+
+  var pt={
+    name:name, status:status, diff:_pickedDiff, desc:desc,
+    author: getUsername(),   // ← имя автора
+    org: getUsername(),
+    vol:0, lat:_pendingLatLng.lat, lng:_pendingLatLng.lng,
+    before:_photoBeforeData, after:null, chat:[], custom:true, public:false, donate:donate
+  };
   window.appPoints.push(pt);
-  SS.saveCustom(window.appPoints.filter(function(p){return p.custom;}));
+  SS.saveCustom(window.appPoints.filter(function(p){ return p.custom; }));
   document.getElementById('modal-overlay').classList.remove('show');
   cancelMode();
   window.applyFiltersAndRender();
+  if(isPub) setTimeout(function(){ window.pushMarkToPublic(name); }, 300);
 };
 
 function shakeField(id){
   var el=document.getElementById(id);
-  el.style.borderColor='#e53935';el.style.animation='shake 0.3s ease';
-  setTimeout(function(){el.style.animation='';el.style.borderColor='';},400);
+  el.style.borderColor='#e53935'; el.style.animation='shake 0.3s ease';
+  setTimeout(function(){ el.style.animation=''; el.style.borderColor=''; },400);
 }
 
 window.toggleAddMarkerMode=function(){
   var btn=document.getElementById('addPlaceBtn');
   if(!window.isAddingMarkerMode){
-    window.isAddingMarkerMode=true;btn.textContent='❌ Отмена';btn.classList.add('active-mode');
-    if(window.map)window.map.getContainer().style.cursor='crosshair';
+    window.isAddingMarkerMode=true; btn.textContent='❌ Отмена'; btn.classList.add('active-mode');
+    if(window.map) window.map.getContainer().style.cursor='crosshair';
     document.getElementById('map-hint').classList.add('show');
-  } else {cancelMode();}
+  } else { cancelMode(); }
 };
 
 function cancelMode(){
   window.isAddingMarkerMode=false;
   var btn=document.getElementById('addPlaceBtn');
-  btn.textContent='＋ Отметить место';btn.classList.remove('active-mode');
-  if(window.map)window.map.getContainer().style.cursor='';
+  btn.textContent='＋ Отметить место'; btn.classList.remove('active-mode');
+  if(window.map) window.map.getContainer().style.cursor='';
   document.getElementById('map-hint').classList.remove('show');
 }
 
-function mkIcon(color,isCustom){
+// ════════════════════════════════════════════════════
+// MAP / POPUP BUILDERS
+// ════════════════════════════════════════════════════
+function mkIcon(color, isCustom, isPublic){
   var c=color==='red'?'#e53935':color==='orange'?'#f57c00':'#22bf75';
-  var inner=isCustom?'<text x="16" y="19" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">★</text>':'<circle cx="16" cy="14" r="5" fill="#fff" opacity="0.9"/>';
+  var inner=isPublic
+    ?'<text x="16" y="19" text-anchor="middle" font-size="10" fill="#fff" font-weight="bold">🌍</text>'
+    :isCustom
+      ?'<text x="16" y="19" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">★</text>'
+      :'<circle cx="16" cy="14" r="5" fill="#fff" opacity="0.9"/>';
   var svg='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42"><ellipse cx="16" cy="38" rx="7" ry="3" fill="rgba(0,0,0,0.15)"/><path d="M16 2C9.373 2 4 7.373 4 14c0 9 12 24 12 24S28 23 28 14C28 7.373 22.627 2 16 2z" fill="'+c+'" stroke="#fff" stroke-width="2"/>'+inner+'</svg>';
   return L.divIcon({html:svg,iconSize:[32,42],iconAnchor:[16,42],popupAnchor:[0,-44],className:''});
 }
-function starsHtml(n){var s='';for(var i=1;i<=5;i++)s+='<span class="'+(i<=n?'star-on':'star-off')+'">★</span>';return s;}
-function badgeHtml(s){if(s==='новая')return '<span class="badge badge-red">🔴 новая</span>';if(s==='в работе')return '<span class="badge badge-orange">🟠 в работе</span>';return '<span class="badge badge-green">✅ выполнена</span>';}
-function nowTime(){var d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
-function avEl(n,isYou){return '<div class="chat-av'+(isYou?' chat-av-you':'')+'">'+n.charAt(0).toUpperCase()+'</div>';}
 
-function msgHtml(c,isYou,idx,uid){
-  var del=isYou?'<span class="btn-del-msg" onclick="deleteMsg(\''+uid+'\','+idx+')">✕</span>':'';
-  return '<div class="chat-msg">'+avEl(c.n||'Вы',isYou)+'<div class="chat-bubble"><div class="chat-name'+(isYou?' chat-name-you':'')+'"><span>'+(c.n||'Вы')+'</span>'+del+'</div><div class="chat-text">'+c.t+'</div><div class="chat-time">'+c.w+'</div></div></div>';
+function starsHtml(n){ var s=''; for(var i=1;i<=5;i++) s+='<span class="'+(i<=n?'star-on':'star-off')+'">★</span>'; return s; }
+function badgeHtml(s){ if(s==='новая') return '<span class="badge badge-red">🔴 новая</span>'; if(s==='в работе') return '<span class="badge badge-orange">🟠 в работе</span>'; return '<span class="badge badge-green">✅ выполнена</span>'; }
+function nowTime(){ var d=new Date(); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
+
+// Цвет аватара по имени (стабильный)
+function nameColor(n){
+  var colors=['#1e8549','#1565c0','#6a1b9a','#c62828','#00838f','#ef6c00','#2e7d32','#4527a0'];
+  var h=0; for(var i=0;i<n.length;i++) h=(h*31+n.charCodeAt(i))&0xffff;
+  return colors[h % colors.length];
 }
 
-function photoSection(before,after,uid){
+function avEl(n, isMe){
+  var bg = isMe ? '#5e7867' : nameColor(n||'?');
+  return '<div class="chat-av" style="background:'+bg+'">'+(n||'?').charAt(0).toUpperCase()+'</div>';
+}
+
+function msgHtml(c, isMine, idx, uid){
+  var del = isMine ? '<button class="btn-del-msg" onclick="deleteMsg(\''+uid+'\','+idx+')">✕</button>' : '';
+  return '<div class="chat-msg">'+avEl(c.n,isMine)
+    +'<div class="chat-bubble">'
+    +'<div class="chat-name'+(isMine?' chat-name-me':'')+'"><span>'+escHtml(c.n||'?')+'</span>'+del+'</div>'
+    +'<div class="chat-text">'+escHtml(c.t)+'</div>'
+    +'<div class="chat-time">'+c.w+'</div>'
+    +'</div></div>';
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function photoSection(before, after, uid){
   var h='<div class="photo-section"><div class="photo-row">';
   h+='<div class="photo-col"><div class="photo-label">До</div>';
-  if(before)h+='<img class="photo-img" src="'+before+'" loading="lazy"/>';
-  else h+='<div class="photo-placeholder">Фото не добавлено</div>';
+  h+=before?'<img class="photo-img" src="'+before+'" loading="lazy"/>':'<div class="photo-placeholder">Фото не добавлено</div>';
   h+='</div><div class="photo-col"><div class="photo-label">После</div>';
-  if(after)h+='<img class="photo-img" src="'+after+'" loading="lazy"/>';
-  else h+='<div class="photo-placeholder"><span>Ещё не закончена</span><button class="btn-upload-after" onclick="triggerAfterPhotoUpload(\''+uid+'\')">📸 Загрузить</button></div>';
-  h+='</div></div></div>';return h;
+  h+=after?'<img class="photo-img" src="'+after+'" loading="lazy"/>'
+    :'<div class="photo-placeholder"><span>Ещё не закончена</span><button class="btn-upload-after" onclick="triggerAfterPhotoUpload(\''+uid+'\')">📸 Загрузить</button></div>';
+  h+='</div></div></div>'; return h;
 }
 
 function donateHtml(m){
-  if(!m.donate)return '';
-  return '<div class="popup-donate-block"><div class="popup-donate-title">☕ Поддержать уборку</div><div class="popup-donate-text">'+m.donate.text+'</div><div class="popup-donate-phone">Kaspi / Номер для перевода: '+(m.donate.phone||'+77778597323')+'</div></div>';
+  if(!m.donate) return '';
+  return '<div class="popup-donate-block"><div class="popup-donate-title">☕ Поддержать уборку</div>'
+    +'<div class="popup-donate-text">'+escHtml(m.donate.text)+'</div>'
+    +'<div class="popup-donate-phone">Kaspi: '+(m.donate.phone||'+77778597323')+'</div></div>';
 }
 
 function buildPopup(m){
-  var joined=SS.getJoined(m.name),volCount=SS.getVolCount(m.name,m.vol),uid=m.name.replace(/[^a-zA-Z0-9]/g,'_');
-  var h='<div class="popup-inner"><div class="popup-header"><button class="btn-share" onclick="copyShareLink('+m.lat+','+m.lng+')">🔗 Поделиться</button><div class="popup-title">'+m.name+'</div><div class="popup-meta">'+badgeHtml(m.status)+(m.diff?'<span>'+starsHtml(m.diff)+'</span>':'')+'</div><div class="popup-desc">'+m.desc+'</div></div>';
-  h+='<div class="popup-info"><div class="info-item">👤 '+(m.author||m.org)+'</div><div class="info-item">🙋 <span class="vol-badge" id="vc_'+uid+'">'+volCount+'</span>&nbsp;волонтёров</div>'+(m.custom?'<div class="info-item" style="color:#1e8549;font-weight:700">⭐ Ваша метка</div>':'')+'</div>';
-  h+=photoSection(m.before,m.after,uid);
-  h+=donateHtml(m);
-  h+='<div class="popup-chat"><div class="chat-title">💬 Чат акции</div><div class="chat-messages" id="msgs_'+uid+'">';
-  m.chat.forEach(function(c,i){h+=msgHtml(c,c.n==='Вы',i,uid);});
-  h+='</div><div class="chat-input-row"><input class="chat-input" id="inp_'+uid+'" placeholder="Написать сообщение..." maxlength="200"/><button class="chat-send" onclick="sendMsg(\''+uid+'\',\''+m.name+'\')">➤</button></div></div>';
-  if(m.status!=='выполнена'){var lbl=joined?'❌ Отказаться':(m.status==='новая'?'🧹 Взяться за уборку':'🤝 Присоединиться');h+='<div class="action-area"><button class="action-btn '+(joined?'btn-decline':'btn-join')+'" onclick="toggleJoin(\''+m.name+'\')">'+lbl+'</button>'+(m.custom?'<button class="action-btn" style="background:#4CAF50;margin-top:8px" onclick="pushMarkToGitHub(\''+m.name+'\')">🌍 Сделать метку общественной</button><button class="action-btn" style="background:#e53935;margin-top:8px" onclick="deleteCustomMark(\''+m.name+'\')">🗑️ Удалить</button>':'')+'</div>';}
-  else if(m.custom){h+='<div class="action-area"><button class="action-btn" style="background:#4CAF50" onclick="pushMarkToGitHub(\''+m.name+'\')">🌍 Сделать метку общественной</button><button class="action-btn" style="background:#e53935;margin-top:8px" onclick="deleteCustomMark(\''+m.name+'\')">🗑️ Удалить метку</button></div>';}
-  h+='</div>';return h;
+  var me       = getUsername();
+  var isMine   = m.author === me;            // создал я
+  var joined   = SS.getJoined(m.name);
+  var volCount = SS.getVolCount(m.name, m.vol);
+  var uid      = m.name.replace(/[^a-zA-Z0-9]/g,'_');
+
+  var h = '<div class="popup-inner">'
+    +'<div class="popup-header">'
+    +'<button class="btn-share" onclick="copyShareLink('+m.lat+','+m.lng+')">🔗 Поделиться</button>'
+    +'<div class="popup-title">'+escHtml(m.name)+'</div>'
+    +'<div class="popup-meta">'+badgeHtml(m.status)
+    +(m.diff?'<span>'+starsHtml(m.diff)+'</span>':'')
+    +(m.public?'<span class="public-badge">🌍 Общая</span>':'')
+    +(isMine?'<span class="owner-badge">✏️ Моя</span>':'')
+    +'</div>'
+    +'<div class="popup-desc">'+escHtml(m.desc)+'</div>'
+    +'</div>';
+
+  h += '<div class="popup-info">'
+    +'<div class="info-item">👤 '+escHtml(m.author||m.org||'Волонтёр')+'</div>'
+    +'<div class="info-item">🙋 <span class="vol-badge" id="vc_'+uid+'">'+volCount+'</span>&nbsp;волонтёров</div>'
+    +'</div>';
+
+  h += photoSection(m.before, m.after, uid);
+  h += donateHtml(m);
+
+  // Чат
+  h += '<div class="popup-chat"><div class="chat-title">💬 Чат акции</div>'
+    +'<div class="chat-messages" id="msgs_'+uid+'">';
+  m.chat.forEach(function(c,i){ h+=msgHtml(c, c.n===me, i, uid); });
+  h += '</div>'
+    +'<div class="chat-input-row">'
+    +'<input class="chat-input" id="inp_'+uid+'" placeholder="Написать как '+escHtml(me)+'..." maxlength="200"/>'
+    +'<button class="chat-send" onclick="sendMsg(\''+uid+'\',\''+m.name+'\')">➤</button>'
+    +'</div></div>';
+
+  // Кнопки действий
+  var btnArea = '<div class="action-area">';
+  if(m.status !== 'выполнена'){
+    var lbl = joined ? '❌ Отказаться' : (m.status==='новая' ? '🧹 Взяться за уборку' : '🤝 Присоединиться');
+    btnArea += '<button class="action-btn '+(joined?'btn-decline':'btn-join')+'" onclick="toggleJoin(\''+m.name+'\')">'+lbl+'</button>';
+  }
+  // Кнопки только для автора
+  if(isMine){
+    if(!m.public){
+      btnArea += '<button class="action-btn" style="background:#1a6bbf;color:#fff;margin-top:8px" onclick="pushMarkToPublic(\''+m.name+'\')">🌍 Сделать общественной</button>';
+    }
+    if(m.public){
+      // Публичная метка — удаляем и из JSONBin
+      btnArea += '<button class="action-btn" style="background:#e53935;color:#fff;margin-top:8px" onclick="deletePublicMark(\''+m.name+'\')">🗑️ Удалить для всех</button>';
+    } else {
+      // Приватная — только локально
+      btnArea += '<button class="action-btn" style="background:#e53935;color:#fff;margin-top:8px" onclick="deleteLocalMark(\''+m.name+'\')">🗑️ Удалить</button>';
+    }
+  }
+  btnArea += '</div>';
+  h += btnArea + '</div>';
+  return h;
 }
 
-window.deleteCustomMark=function(name){if(!confirm('Удалить метку \"'+name+'\"? Это действие нельзя отменить.'))return;window.appPoints=window.appPoints.filter(function(p){return p.name!==name;});SS.saveCustom(window.appPoints.filter(function(p){return p.custom;}));window.applyFiltersAndRender();alert('Метка удалена.');};
-window.pushMarkToGitHub=window.pushMarkToFirestore;window.copyShareLink=function(lat,lng){var url=window.location.href.split('?')[0]+'?lat='+lat+'&lng='+lng;navigator.clipboard.writeText(url).then(function(){alert('Ссылка скопирована!');}).catch(function(){alert(url);});};
-window.triggerAfterPhotoUpload=function(uid){_currentAfterPhotoTargetUid=uid;document.getElementById('popup-file-after').click();};
-window.handleAfterPhotoUploaded=function(input){var file=input.files[0];if(!file||!_currentAfterPhotoTargetUid)return;var reader=new FileReader();reader.onload=function(e){var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===_currentAfterPhotoTargetUid;});if(m){m.after=e.target.result;m.status='выполнена';window.savePointState(m);window.applyFiltersAndRender();alert('Поздравляем! Фото добавлено.');}input.value='';};reader.readAsDataURL(file);};
-window.savePointState=function(m){if(m.custom){SS.saveCustom(window.appPoints.filter(function(p){return p.custom;}));}else{var mods=SS.getModifiedBase();mods[m.name]={after:m.after,status:m.status,chat:m.chat};SS.saveModifiedBase(mods);}};
-window.refreshChat=function(uid){var el=document.getElementById('msgs_'+uid);if(!el)return;var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid;});if(!m)return;var h='';m.chat.forEach(function(c,i){h+=msgHtml(c,c.n==='Вы',i,uid);});el.innerHTML=h;el.scrollTop=el.scrollHeight;};
-window.deleteMsg=function(uid,idx){var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid;});if(m){m.chat.splice(idx,1);window.savePointState(m);window.refreshChat(uid);}};
-window.sendMsg=function(uid,name){var inp=document.getElementById('inp_'+uid);if(!inp||!inp.value.trim())return;var m=window.appPoints.find(function(p){return p.name===name;});if(m){m.chat.push({n:'Вы',t:inp.value.trim(),w:nowTime()});window.savePointState(m);window.refreshChat(uid);inp.value='';}};
-window.toggleJoin=function(name){var joined=SS.getJoined(name),m=window.appPoints.find(function(p){return p.name===name;});if(!m)return;var vol=SS.getVolCount(name,m.vol);if(!joined){SS.setJoined(name,true);SS.setVolCount(name,vol+1);if(m.status==='новая'){m.status='в работе';window.savePointState(m);}alert('Вы успешно присоединились к уборке!');}else{SS.setJoined(name,false);SS.setVolCount(name,Math.max(1,vol-1));alert('Вы отменили своё участие.');}window.applyFiltersAndRender();setTimeout(function(){var uid=name.replace(/[^a-zA-Z0-9]/g,'_');var el=document.getElementById('vc_'+uid);if(el){el.classList.add('vol-bump');setTimeout(function(){el.classList.remove('vol-bump');},450);}},100);};
+// ════════════════════════════════════════════════════
+// ACTIONS
+// ════════════════════════════════════════════════════
+window.deleteLocalMark = function(name){
+  if(!confirm('Удалить метку «'+name+'»?')) return;
+  window.appPoints = window.appPoints.filter(function(p){ return p.name!==name; });
+  SS.saveCustom(window.appPoints.filter(function(p){ return p.custom; }));
+  window.applyFiltersAndRender();
+};
 
-window.applyFiltersAndRender=function(){
+window.copyShareLink = function(lat,lng){
+  var url = window.location.href.split('?')[0]+'?lat='+lat+'&lng='+lng;
+  navigator.clipboard.writeText(url).then(function(){ alert('Ссылка скопирована!'); }).catch(function(){ alert(url); });
+};
+
+window.triggerAfterPhotoUpload = function(uid){
+  _currentAfterPhotoTargetUid = uid;
+  document.getElementById('popup-file-after').click();
+};
+
+window.handleAfterPhotoUploaded = function(input){
+  var file=input.files[0]; if(!file||!_currentAfterPhotoTargetUid) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var m=window.appPoints.find(function(p){ return p.name.replace(/[^a-zA-Z0-9]/g,'_')===_currentAfterPhotoTargetUid; });
+    if(m){ m.after=e.target.result; m.status='выполнена'; window.savePointState(m); window.applyFiltersAndRender(); alert('Поздравляем! Фото добавлено.'); }
+    input.value='';
+  };
+  reader.readAsDataURL(file);
+};
+
+window.savePointState = function(m){
+  if(m.custom){ SS.saveCustom(window.appPoints.filter(function(p){ return p.custom; })); }
+  else{ var mods=SS.getModifiedBase(); mods[m.name]={after:m.after,status:m.status,chat:m.chat}; SS.saveModifiedBase(mods); }
+};
+
+window.refreshChat = function(uid){
+  var el=document.getElementById('msgs_'+uid); if(!el) return;
+  var m=window.appPoints.find(function(p){ return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid; }); if(!m) return;
+  var me=getUsername(), h='';
+  m.chat.forEach(function(c,i){ h+=msgHtml(c, c.n===me, i, uid); });
+  el.innerHTML=h; el.scrollTop=el.scrollHeight;
+};
+
+window.deleteMsg = function(uid,idx){
+  var m=window.appPoints.find(function(p){ return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid; });
+  if(m){ m.chat.splice(idx,1); window.savePointState(m); window.refreshChat(uid); }
+};
+
+window.sendMsg = function(uid, name){
+  var inp=document.getElementById('inp_'+uid); if(!inp||!inp.value.trim()) return;
+  var m=window.appPoints.find(function(p){ return p.name===name; });
+  if(m){ m.chat.push({n:getUsername(), t:inp.value.trim(), w:nowTime()}); window.savePointState(m); window.refreshChat(uid); inp.value=''; }
+};
+
+window.toggleJoin = function(name){
+  var joined=SS.getJoined(name), m=window.appPoints.find(function(p){ return p.name===name; });
+  if(!m) return;
+  var vol=SS.getVolCount(name,m.vol);
+  if(!joined){
+    SS.setJoined(name,true); SS.setVolCount(name,vol+1);
+    if(m.status==='новая'){ m.status='в работе'; window.savePointState(m); }
+    alert('✅ '+getUsername()+', вы присоединились к уборке!');
+  } else {
+    SS.setJoined(name,false); SS.setVolCount(name,Math.max(1,vol-1));
+    alert('Вы отменили участие.');
+  }
+  window.applyFiltersAndRender();
+  setTimeout(function(){
+    var uid=name.replace(/[^a-zA-Z0-9]/g,'_');
+    var el=document.getElementById('vc_'+uid);
+    if(el){ el.classList.add('vol-bump'); setTimeout(function(){ el.classList.remove('vol-bump'); },450); }
+  },100);
+};
+
+// ════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════
+window.applyFiltersAndRender = function(){
   var sv=document.getElementById('searchInput').value.toLowerCase().trim();
   var st=document.getElementById('filterSelect').value;
   var df=document.getElementById('filterDiffSelect').value;
-  window.markersLayers.forEach(function(l){window.map.removeLayer(l);});window.markersLayers=[];
+  window.markersLayers.forEach(function(l){ window.map.removeLayer(l); });
+  window.markersLayers=[];
   window.appPoints.forEach(function(m){
     var ms=!sv||(m.name.toLowerCase().indexOf(sv)!==-1||m.desc.toLowerCase().indexOf(sv)!==-1);
     var mst=st==='all'||m.status===st;
     var md=df==='all'||String(m.diff)===df;
     if(ms&&mst&&md){
       var color=m.status==='новая'?'red':m.status==='в работе'?'orange':'green';
-      var marker=L.marker([m.lat,m.lng],{icon:mkIcon(color,m.custom)});
+      var marker=L.marker([m.lat,m.lng],{icon:mkIcon(color,m.custom,m.public)});
       marker.bindPopup(buildPopup(m),{className:'custom-popup',minWidth:320,maxWidth:360});
-      marker.addTo(window.map);window.markersLayers.push(marker);
+      marker.addTo(window.map); window.markersLayers.push(marker);
     }
   });
 };
 
-// ===== FIREBASE CONFIGURATION =====
-var FIREBASE_CONFIG = {apiKey: "772622469485" ,authDomain: "https://ecotown-916e0-default-rtdb.europe-west1.firebasedatabase.app/",projectId: "ecotown-916e0",storageBucket: "YOUR_BUCKET",messagingSenderId: "YOUR_SENDER",appId: "YOUR_APP"};
-var firebaseApp=null,firebaseDB=null,firebaseAuth=null;
-
-window.initFirebase=function(){
-  if(!window.Firebase||!window.firebase.firestore){console.warn('Firebase SDK not loaded');return Promise.reject('Firebase not loaded');}
-  if(firebaseApp)return Promise.resolve();
-  try{
-    firebaseApp=window.firebase.initializeApp(FIREBASE_CONFIG);
-    firebaseDB=window.firebase.firestore();
-    firebaseAuth=window.firebase.auth();
-    return firebaseAuth.signInAnonymously().then(function(){console.log('Firebase initialized');return true;}).catch(function(e){console.error('Firebase auth error:',e);return false;});
-  }catch(e){console.error('Firebase init error:',e);return Promise.reject(e);}
-};
-
-window.loadPublicMarksFromFirestore=function(){
-  if(!firebaseDB)return Promise.resolve({marks:[]});
-  return firebaseDB.collection('marks').get().then(function(snapshot){
-    var marks=[];
-    snapshot.forEach(function(doc){marks.push(Object.assign({id:doc.id},doc.data()));});
-    return {marks:marks};
-  }).catch(function(e){console.error('Firestore error:',e);return {marks:[]};});
-};
-
-window.pushMarkToFirestore=function(name){
-  if(!firebaseDB){alert('Firebase не инициализирован. Проверьте конфиг.');return;}
-  var mark=window.appPoints.find(function(p){return p.name===name;});
-  if(!mark){alert('Метка не найдена');return;}
-  var newMark=Object.assign({},mark);
-  newMark.custom=false;
-  newMark.userId=firebaseAuth.currentUser.uid;
-  newMark.createdAt=new Date().toISOString();
-  var docId=mark.name.replace(/[^a-zA-Z0-9-]/g,'-');
-  firebaseDB.collection('marks').doc(docId).set(newMark).then(function(){
-    alert('✅ Метка "'+mark.name+'" добавлена в общий доступ!');
-    window.loadPublicMarksFromFirestore().then(function(data){
-      var existingMarks=window.appPoints.filter(function(p){return !p.custom;});
-      window.appPoints=window.appPoints.filter(function(p){return p.custom;});
-      data.marks.forEach(function(m){window.appPoints.push(m);});
-      window.applyFiltersAndRender();
-    });
-  }).catch(function(err){alert('Ошибка: '+err.message);});
-};
-
-window.loadPublicMarks=function(){
-  return window.initFirebase().then(function(){return window.loadPublicMarksFromFirestore();}).catch(function(){
-    console.log('Falling back to JSON file');
-    return fetch('data/public-marks.json').then(function(r){return r.json();}).catch(function(e){console.error('Ошибка загрузки публичных меток:',e);return {marks:[]};});
-  });
-};
-
-// Setup real-time listener for Firestore
-window.setupFirestoreListener=function(){
-  if(!firebaseDB)return;
-  firebaseDB.collection('marks').onSnapshot(function(snapshot){
-    var marks=[];
-    snapshot.forEach(function(doc){marks.push(Object.assign({id:doc.id},doc.data()));});
-    var customMarks=window.appPoints.filter(function(p){return p.custom;});
-    window.appPoints=customMarks.concat(marks);
-    window.applyFiltersAndRender();
-  });
-};
-
-window.onload=function(){
+// ════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════
+function initApp(){
   window.map=L.map('map',{center:[51.2333,51.3667],zoom:13,zoomControl:true});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(window.map);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(window.map);
 
-  // Загружаем публичные метки из JSON
   window.loadPublicMarks().then(function(data){
-    var basePoints = data.marks || [];
-    
-    // Обновляем базовые метки с сохранёнными изменениями
-    var mods=SS.getModifiedBase();
-    basePoints.forEach(function(bp){
-      // Добавляем author если его нет, для совместимости
+    var pubs = data.marks||[];
+    var mods = SS.getModifiedBase();
+    pubs.forEach(function(bp){
       if(!bp.author && bp.org) bp.author=bp.org;
-      bp.custom=false;
+      bp.custom=false; bp.public=true;
+      if(!bp.chat) bp.chat=[];
+      if(!bp.vol)  bp.vol=0;
       if(mods[bp.name]){
         var mod=mods[bp.name];
-        if(mod.status!==undefined)bp.status=mod.status;
-        if(mod.after!==undefined)bp.after=mod.after;
-        if(mod.chat!==undefined)bp.chat=mod.chat;
+        if(mod.status!==undefined) bp.status=mod.status;
+        if(mod.after!==undefined)  bp.after=mod.after;
+        if(mod.chat!==undefined)   bp.chat=mod.chat;
       }
       window.appPoints.push(bp);
     });
-    
-    // Загружаем пользовательские метки (с звёздочкой)
     SS.getCustom().forEach(function(cp){
       cp.custom=true;
-      window.appPoints.push(cp);
+      var dup=window.appPoints.find(function(p){ return p.name===cp.name&&p.public; });
+      if(!dup) window.appPoints.push(cp);
     });
-    
     window.applyFiltersAndRender();
   });
 
-  document.getElementById('filterSelect').addEventListener('change',window.applyFiltersAndRender);
-  document.getElementById('filterDiffSelect').addEventListener('change',window.applyFiltersAndRender);
-  document.getElementById('searchInput').addEventListener('input',window.applyFiltersAndRender);
+  document.getElementById('filterSelect').addEventListener('change', window.applyFiltersAndRender);
+  document.getElementById('filterDiffSelect').addEventListener('change', window.applyFiltersAndRender);
+  document.getElementById('searchInput').addEventListener('input', window.applyFiltersAndRender);
 
-  var urlParams=new URLSearchParams(window.location.search);
-  var pLat=urlParams.get('lat'),pLng=urlParams.get('lng');
-  if(pLat&&pLng){var tLat=parseFloat(pLat),tLng=parseFloat(pLng);window.map.setView([tLat,tLng],16);setTimeout(function(){window.markersLayers.forEach(function(mk){var ll=mk.getLatLng();if(Math.abs(ll.lat-tLat)<0.0001&&Math.abs(ll.lng-tLng)<0.0001)mk.openPopup();});},600);}
+  var up=new URLSearchParams(window.location.search);
+  var pLat=up.get('lat'), pLng=up.get('lng');
+  if(pLat&&pLng){
+    var tLat=parseFloat(pLat), tLng=parseFloat(pLng);
+    window.map.setView([tLat,tLng],16);
+    setTimeout(function(){
+      window.markersLayers.forEach(function(mk){
+        var ll=mk.getLatLng();
+        if(Math.abs(ll.lat-tLat)<0.0001&&Math.abs(ll.lng-tLng)<0.0001) mk.openPopup();
+      });
+    },600);
+  }
 
-  window.map.on('click',function(e){if(!window.isAddingMarkerMode)return;_pendingLatLng=e.latlng;openModal();});
+  window.map.on('click',function(e){ if(!window.isAddingMarkerMode) return; _pendingLatLng=e.latlng; openModal(); });
 
   document.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&e.target&&e.target.classList.contains('chat-input')){var uid=e.target.id.replace('inp_','');var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid;});if(m)window.sendMsg(uid,m.name);}
-    if(e.key==='Escape'&&document.getElementById('modal-overlay').classList.contains('show'))closeModal();
+    if(e.key==='Enter'&&e.target&&e.target.classList.contains('chat-input')){
+      var uid=e.target.id.replace('inp_','');
+      var m=window.appPoints.find(function(p){ return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid; });
+      if(m) window.sendMsg(uid,m.name);
+    }
+    if(e.key==='Escape'&&document.getElementById('modal-overlay').classList.contains('show')) closeModal();
   });
-  
-  // Initialize Firebase and setup real-time sync
-  window.initFirebase().then(function(){window.setupFirestoreListener();}).catch(function(){console.log('Firebase not available, using JSON fallback');});
+
+  // Автообновление каждые 60 сек
+  setInterval(function(){
+    window.loadPublicMarks().then(function(data){
+      var pubs=data.marks||[];
+      window.appPoints=window.appPoints.filter(function(p){ return p.custom; });
+      pubs.forEach(function(bp){
+        if(!bp.chat) bp.chat=[];
+        if(!bp.vol)  bp.vol=0;
+        bp.public=true; bp.custom=false;
+        window.appPoints.push(bp);
+      });
+      window.applyFiltersAndRender();
+    });
+  }, 60000);
+}
+
+// ════════════════════════════════════════════════════
+// ENTRY POINT
+// ════════════════════════════════════════════════════
+window.onload = function(){
+  var existing = getUsername();
+  if(existing){
+    // Уже есть имя — сразу показываем карту
+    document.getElementById('welcome-screen').classList.add('hidden');
+    document.getElementById('app').style.display='block';
+    updateHeaderChip();
+    initApp();
+  }
+  // иначе welcome screen уже виден, ждём ввода имени
+
+  // Enter в welcome поле
+  document.getElementById('welcome-name-input').addEventListener('keydown',function(e){
+    if(e.key==='Enter') saveUsername();
+  });
 };
 </script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+</body>
+</html>
