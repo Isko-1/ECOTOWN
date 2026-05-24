@@ -194,10 +194,10 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
       <!-- DONATE TOGGLE — показывается только при diff 4-5 -->
       <div id="donate-toggle-wrap" style="display:none;">
         <div class="donate-toggle-block">
-          <div class="donate-toggle-header" onclick="toggleDonateFields()">
+          <div class="donate-toggle-header" onclick="toggleDonateFields(event)">
             <div class="donate-toggle-title">☕ Добавить блок доната <span class="donate-toggle-badge">4–5 ★</span></div>
-            <label class="toggle-switch" onclick="event.stopPropagation()">
-              <input type="checkbox" id="donate-toggle-cb" onchange="toggleDonateFields()"/>
+            <label class="toggle-switch">
+              <input type="checkbox" id="donate-toggle-cb"/>
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -324,17 +324,24 @@ function pickStar(v){
   }
 }
 
-function toggleDonateFields(){
+function toggleDonateFields(evt){
+  if(evt) evt.preventDefault();
   var cb=document.getElementById('donate-toggle-cb');
-  cb.checked=!cb.checked;
-  document.getElementById('donate-fields').style.display=cb.checked?'flex':'none';
+  if(cb){
+    cb.checked=!cb.checked;
+    var ff=document.getElementById('donate-fields');
+    if(ff) ff.style.display=cb.checked?'flex':'none';
+  }
 }
-// Реальный onchange чекбокса
+// Реальный onchange чекбокса при его прямом изменении
 document.addEventListener('DOMContentLoaded',function(){
   var cb=document.getElementById('donate-toggle-cb');
-  if(cb) cb.addEventListener('change',function(){
-    document.getElementById('donate-fields').style.display=cb.checked?'flex':'none';
-  });
+  if(cb){
+    cb.addEventListener('change',function(){
+      var ff=document.getElementById('donate-fields');
+      if(ff) ff.style.display=cb.checked?'flex':'none';
+    });
+  }
 });
 
 function handlePhoto(input,which){
