@@ -474,13 +474,60 @@ function buildPopup(m){
   h+='<div class="popup-chat"><div class="chat-title">💬 Чат акции</div><div class="chat-messages" id="msgs_'+uid+'">';
   m.chat.forEach(function(c,i){h+=msgHtml(c,c.n==='Вы',i,uid);});
   h+='</div><div class="chat-input-row"><input class="chat-input" id="inp_'+uid+'" placeholder="Написать сообщение..." maxlength="200"/><button class="chat-send" onclick="sendMsg(\''+uid+'\',\''+m.name+'\')">➤</button></div></div>';
-  if(m.status!=='выполнена'){var lbl=joined?'❌ Отказаться':(m.status==='новая'?'🧹 Взяться за уборку':'🤝 Присоединиться');h+='<div class="action-area"><button class="action-btn '+(joined?'btn-decline':'btn-join')+'" onclick="toggleJoin(\''+m.name+'\')">'+lbl+'</button>'+(m.custom?'<button class="action-btn" style="background:#e53935;margin-top:8px" onclick="deleteCustomMark(\''+m.name+'\')">🗑️ Удалить</button>':'')+'</div>';}
-  else if(m.custom){h+='<div class="action-area"><button class="action-btn" style="background:#e53935" onclick="deleteCustomMark(\''+m.name+'\')">🗑️ Удалить метку</button></div>';}
+  if(m.status!=='выполнена'){var lbl=joined?'❌ Отказаться':(m.status==='новая'?'🧹 Взяться за уборку':'🤝 Присоединиться');h+='<div class="action-area"><button class="action-btn '+(joined?'btn-decline':'btn-join')+'" onclick="toggleJoin(\''+m.name+'\')">'+lbl+'</button>'+(m.custom?'<button class="action-btn" style="background:#4CAF50;margin-top:8px" onclick="pushMarkToGitHub(\''+m.name+'\')">📤 Поделиться меткой</button><button class="action-btn" style="background:#e53935;margin-top:8px" onclick="deleteCustomMark(\''+m.name+'\'">🗑️ Удалить</button>':'')+'</div>';}
+  else if(m.custom){h+='<div class="action-area"><button class="action-btn" style="background:#4CAF50" onclick="pushMarkToGitHub(\''+m.name+'\')">📤 Поделиться меткой</button><button class="action-btn" style="background:#e53935;margin-top:8px" onclick="deleteCustomMark(\''+m.name+'\')">🗑️ Удалить метку</button></div>';}
   h+='</div>';return h;
 }
 
 window.deleteCustomMark=function(name){if(!confirm('Удалить метку \"'+name+'\"? Это действие нельзя отменить.'))return;window.appPoints=window.appPoints.filter(function(p){return p.name!==name;});SS.saveCustom(window.appPoints.filter(function(p){return p.custom;}));window.applyFiltersAndRender();alert('Метка удалена.');};
-window.copyShareLink=function(lat,lng){var url=window.location.href.split('?')[0]+'?lat='+lat+'&lng='+lng;navigator.clipboard.writeText(url).then(function(){alert('Ссылка скопирована!');}).catch(function(){alert(url);});};
+window.pushMarkToGitHub=function(name){
+  var mark=window.appPoints.find(function(p){return p.name===name;});
+  if(!mark){alert('Метка не найдена');return;}
+  var token=localStorage.getItem('ECOTOWN_GH_TOKEN');
+  if(!token){
+    token=prompt('Введите ваш GitHub Personal Access Token:\n\n1. Откройте https://github.com/settings/tokens\n2. Нажмите "Generate new token (classic)"\n3. Выберите scope: repo (full control)\n4. Скопируйте токен и вставьте сюда');
+    if(!token)return;
+    localStorage.setItem('ECOTOWN_GH_TOKEN',token);
+  }
+  var owner='Isko-1',repo='ECOTOWN',branch='main',path='data/public-marks.json';
+  fetch('https://api.github.com/repos/'+owner+'/'+repo+'/contents/'+path,{headers:{'Authorization':'token '+token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.content)throw new Error('Не могу прочитать файл');
+      var content=atob(data.content);
+      var json=JSON.parse(content);
+      if(!json.marks)json.marks=[];
+      var exists=json.marks.find(function(m){return m.name===mark.name;});
+      if(exists){alert('Эта метка уже в общем доступе!');return;}
+      var newMark=Object.assign({},mark);
+      newMark.custom=false;
+      json.marks.push(newMark);
+      var newContent=btoa(JSON.stringify(json,null,2));
+      return fetch('https://api.github.com/repos/'+owner+'/'+repo+'/contents/'+path,{
+        method:'PUT',
+        headers:{'Authorization':'token '+token,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          message:'Share mark: '+mark.name,
+          content:newContent,
+          sha:data.sha,
+          branch:branch
+        })
+      });
+    })
+    .then(function(r){
+      if(!r.ok)throw new Error('Ошибка: '+r.status);
+      return r.json();
+    })
+    .then(function(){
+      alert('✅ Метка "'+mark.name+'" поделена! Друзья смогут её увидеть за 1-2 минуты.');
+      window.loadPublicMarks();
+      setTimeout(window.applyFiltersAndRender,2000);
+    })
+    .catch(function(err){
+      console.error(err);
+      alert('❌ Ошибка: '+err.message+'\n\nПроверьте токен в localStorage и попробуйте снова.');
+    });
+};window.copyShareLink=function(lat,lng){var url=window.location.href.split('?')[0]+'?lat='+lat+'&lng='+lng;navigator.clipboard.writeText(url).then(function(){alert('Ссылка скопирована!');}).catch(function(){alert(url);});};
 window.triggerAfterPhotoUpload=function(uid){_currentAfterPhotoTargetUid=uid;document.getElementById('popup-file-after').click();};
 window.handleAfterPhotoUploaded=function(input){var file=input.files[0];if(!file||!_currentAfterPhotoTargetUid)return;var reader=new FileReader();reader.onload=function(e){var m=window.appPoints.find(function(p){return p.name.replace(/[^a-zA-Z0-9]/g,'_')===_currentAfterPhotoTargetUid;});if(m){m.after=e.target.result;m.status='выполнена';window.savePointState(m);window.applyFiltersAndRender();alert('Поздравляем! Фото добавлено.');}input.value='';};reader.readAsDataURL(file);};
 window.savePointState=function(m){if(m.custom){SS.saveCustom(window.appPoints.filter(function(p){return p.custom;}));}else{var mods=SS.getModifiedBase();mods[m.name]={after:m.after,status:m.status,chat:m.chat};SS.saveModifiedBase(mods);}};
