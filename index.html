@@ -215,6 +215,24 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
     </div>
     <div id="map"></div>
     <div id="map-hint">📍 Кликните на карту, чтобы выбрать место</div>
+    <div id="stats-panel" style="background:#f6f9f6;border:1px solid #dce5dc;border-radius:12px;margin-top:15px;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:28px;font-weight:700;color:#1e8549;" id="stat-total-cleaned">0</div>
+        <div style="font-size:12px;color:#5e7867;margin-top:4px;">Волонтёров участвует</div>
+      </div>
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:28px;font-weight:700;color:#f57c00;" id="stat-avg-diff">—</div>
+        <div style="font-size:12px;color:#5e7867;margin-top:4px;">Средняя сложность</div>
+      </div>
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:28px;font-weight:700;color:#1976d2;" id="stat-completed">0</div>
+        <div style="font-size:12px;color:#5e7867;margin-top:4px;">Завершено акций</div>
+      </div>
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:24px;font-weight:700;color:#d32e22;" id="stat-top-vol">—</div>
+        <div style="font-size:12px;color:#5e7867;margin-top:4px;">Топ волонтёр</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -275,7 +293,7 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
         </div>
       </div>
       <div>
-        <label class="field-label">Фото «До уборки»</label>
+        <label class="field-label">Фото «До и после уборки»</label>
         <div class="photo-upload-row">
           <div class="photo-upload-box" id="box-before">
             <input type="file" accept="image/*" onchange="handlePhoto(this,'before')" id="file-before"/>
@@ -283,7 +301,17 @@ body{font-family:Arial,sans-serif;background:#f9fbf9;color:#132017;padding:20px;
             <img class="photo-preview" id="prev-before" alt=""/>
             <div id="box-before-inner">
               <div class="photo-upload-icon">📷</div>
-              <div class="photo-upload-label-text">Фото до</div>
+              <div class="photo-upload-label-text">До</div>
+              <div class="photo-upload-sub">Нажмите для загрузки</div>
+            </div>
+          </div>
+          <div class="photo-upload-box" id="box-after">
+            <input type="file" accept="image/*" onchange="handlePhoto(this,'after')" id="file-after"/>
+            <button class="photo-clear" id="clear-after" onclick="clearPhoto(event,'after')">✕</button>
+            <img class="photo-preview" id="prev-after" alt=""/>
+            <div id="box-after-inner">
+              <div class="photo-upload-icon">📷</div>
+              <div class="photo-upload-label-text">После</div>
               <div class="photo-upload-sub">Нажмите для загрузки</div>
             </div>
           </div>
@@ -328,7 +356,7 @@ window.map = null;
 window.appPoints = [];
 window.markersLayers = [];
 window.isAddingMarkerMode = false;
-var _pendingLatLng = null, _pickedDiff = 3, _photoBeforeData = null, _currentAfterPhotoTargetUid = null;
+var _pendingLatLng = null, _pickedDiff = 3, _photoBeforeData = null, _photoAfterData = null, _currentAfterPhotoTargetUid = null;
 var DIFF_LABELS = ['','Очень легко 😊','Легко 🙂','Средне 😐','Сложно 😤','Очень сложно 💪'];
 
 // ════════════════════════════════════════════════════
@@ -483,15 +511,27 @@ function toggleDonateFields(evt){
 
 function handlePhoto(input,which){
   var file=input.files[0]; if(!file) return;
+  if(file.size>5*1024*1024){alert('Файл слишком большой (макс 5MB)');return;}
   var reader=new FileReader();
   reader.onload=function(e){
-    if(which==='before'){
-      _photoBeforeData=e.target.result;
-      var img=document.getElementById('prev-before');
-      img.src=e.target.result; img.style.display='block';
-      document.getElementById('box-before-inner').style.display='none';
-      document.getElementById('clear-before').style.display='block';
-    }
+    var img=new Image();
+    img.onload=function(){
+      if(which==='before'){
+        _photoBeforeData=e.target.result;
+        var prev=document.getElementById('prev-before');
+        prev.src=e.target.result; prev.style.display='block';
+        document.getElementById('box-before-inner').style.display='none';
+        document.getElementById('clear-before').style.display='block';
+      }
+      else if(which==='after'){
+        _photoAfterData=e.target.result;
+        var prev=document.getElementById('prev-after');
+        prev.src=e.target.result; prev.style.display='block';
+        document.getElementById('box-after-inner').style.display='none';
+        document.getElementById('clear-after').style.display='block';
+      }
+    };
+    img.src=e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -505,6 +545,14 @@ function clearPhoto(e,which){
     document.getElementById('box-before-inner').style.display='';
     document.getElementById('clear-before').style.display='none';
     document.getElementById('file-before').value='';
+  }
+  else if(which==='after'){
+    _photoAfterData=null;
+    document.getElementById('prev-after').style.display='none';
+    document.getElementById('prev-after').src='';
+    document.getElementById('box-after-inner').style.display='';
+    document.getElementById('clear-after').style.display='none';
+    document.getElementById('file-after').value='';
   }
 }
 
@@ -548,7 +596,7 @@ window.confirmMark=function(){
     author: getUsername(),   // ← имя автора
     org: getUsername(),
     vol:0, lat:_pendingLatLng.lat, lng:_pendingLatLng.lng,
-    before:_photoBeforeData, after:null, chat:[], custom:true, public:false, donate:donate
+    before:_photoBeforeData, after:_photoAfterData, chat:[], custom:true, public:false, donate:donate
   };
   window.appPoints.push(pt);
   SS.saveCustom(window.appPoints.filter(function(p){ return p.custom; }));
@@ -756,9 +804,12 @@ window.sendMsg = function(uid, name){
   if(m){ m.chat.push({n:getUsername(), t:inp.value.trim(), w:nowTime()}); window.savePointState(m); window.refreshChat(uid); inp.value=''; }
 };
 
+window._joinInProgress={};
 window.toggleJoin = function(name){
+  if(window._joinInProgress[name])return;
+  window._joinInProgress[name]=true;
   var joined=SS.getJoined(name), m=window.appPoints.find(function(p){ return p.name===name; });
-  if(!m) return;
+  if(!m){ window._joinInProgress[name]=false; return; }
   var vol=SS.getVolCount(name,m.vol);
   if(!joined){
     SS.setJoined(name,true); SS.setVolCount(name,vol+1);
@@ -773,6 +824,7 @@ window.toggleJoin = function(name){
     var uid=name.replace(/[^a-zA-Z0-9]/g,'_');
     var el=document.getElementById('vc_'+uid);
     if(el){ el.classList.add('vol-bump'); setTimeout(function(){ el.classList.remove('vol-bump'); },450); }
+    window._joinInProgress[name]=false;
   },100);
 };
 
@@ -796,6 +848,27 @@ window.applyFiltersAndRender = function(){
       marker.addTo(window.map); window.markersLayers.push(marker);
     }
   });
+  window.updateStats();
+};
+
+window.updateStats = function(){
+  var totalVol=0, totalDiff=0, completed=0, volCounts={};
+  window.appPoints.forEach(function(m){
+    if(m.vol) totalVol+=m.vol;
+    if(m.diff) totalDiff+=m.diff;
+    if(m.status==='выполнена') completed++;
+    if(m.author) volCounts[m.author]=(volCounts[m.author]||0)+m.vol;
+  });
+  document.getElementById('stat-total-cleaned').textContent=totalVol;
+  document.getElementById('stat-completed').textContent=completed;
+  var avgDiff=window.appPoints.length>0?Math.round((totalDiff/window.appPoints.length)*10)/10:0;
+  document.getElementById('stat-avg-diff').textContent=avgDiff.toFixed(1)+' ★';
+  var topVol='—';
+  if(Object.keys(volCounts).length>0){
+    var sorted=Object.entries(volCounts).sort(function(a,b){return b[1]-a[1];});
+    topVol=sorted[0][0].split(' ')[0]+' ('+sorted[0][1]+')';
+  }
+  document.getElementById('stat-top-vol').textContent=topVol;
 };
 
 // ════════════════════════════════════════════════════
@@ -872,7 +945,34 @@ function initApp(){
       window.applyFiltersAndRender();
     });
   }, 60000);
-}
+  
+  // Улучшенная обработка фото для мобильных (добавить preview перед загрузкой)
+  window.handlePhotoImproved=function(input,which){
+    var file=input.files[0];if(!file)return;
+    if(file.size>5*1024*1024){alert('Файл слишком большой (макс 5MB)');return;}
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        if(which==='before'){
+          _photoBeforeData=e.target.result;
+          var prev=document.getElementById('prev-before');
+          prev.src=e.target.result;prev.style.display='block';
+          document.getElementById('box-before-inner').style.display='none';
+          document.getElementById('clear-before').style.display='block';
+        }
+        else if(which==='after'){
+          _photoAfterData=e.target.result;
+          var prev=document.getElementById('prev-after');
+          prev.src=e.target.result;prev.style.display='block';
+          document.getElementById('box-after-inner').style.display='none';
+          document.getElementById('clear-after').style.display='block';
+        }
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
 
 // ════════════════════════════════════════════════════
 // ENTRY POINT
