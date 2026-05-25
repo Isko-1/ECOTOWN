@@ -738,6 +738,14 @@ function buildPopup(m){
 
   // Кнопки действий
   var btnArea = '<div class="action-area">';
+  
+  // Кнопка смены статуса (для авторов)
+  if(isMine && m.status !== 'выполнена'){
+    var nextStatus = m.status === 'новая' ? 'в работе' : 'выполнена';
+    var btnLabel = m.status === 'новая' ? '▶️ Начать уборку' : '✅ Завершить';
+    btnArea += '<button class="action-btn" style="background:#f59f0a;color:#fff" onclick="changeMarkStatus(\''+m.name+'\',\''+nextStatus+'\')">'+btnLabel+'</button>';
+  }
+  
   if(m.status !== 'выполнена'){
     var lbl = joined ? '❌ Отказаться' : (m.status==='новая' ? '🧹 Взяться за уборку' : '🤝 Присоединиться');
     btnArea += '<button class="action-btn '+(joined?'btn-decline':'btn-join')+'" onclick="toggleJoin(\''+m.name+'\')">'+lbl+'</button>';
@@ -763,6 +771,20 @@ function buildPopup(m){
 // ════════════════════════════════════════════════════
 // ACTIONS
 // ════════════════════════════════════════════════════
+window.changeMarkStatus = function(name, newStatus){
+  var mark = window.appPoints.find(function(p){ return p.name===name; });
+  if(!mark) return;
+  mark.status = newStatus;
+  if(mark.custom){
+    // Сохраняем в localStorage
+    SS.saveCustom(window.appPoints.filter(function(p){ return p.custom; }));
+  }
+  // Сохраняем изменение
+  window.savePointState(mark);
+  window.applyFiltersAndRender();
+  alert('Статус изменён на: '+newStatus);
+};
+
 window.deleteLocalMark = function(name){
   if(!confirm('Удалить метку «'+name+'»?')) return;
   window.appPoints = window.appPoints.filter(function(p){ return p.name!==name; });
