@@ -367,17 +367,28 @@ function setUsername(n){ localStorage.setItem('vol_username', n); }
 function isMe(authorName){ return authorName === getUsername(); }
 
 function saveUsername(){
-  var val = document.getElementById('welcome-name-input').value.trim();
-  if(!val){
-    document.getElementById('welcome-name-input').classList.add('error');
-    setTimeout(function(){ document.getElementById('welcome-name-input').classList.remove('error'); }, 400);
-    return;
+  try{
+    var val = document.getElementById('welcome-name-input').value.trim();
+    if(!val){
+      document.getElementById('welcome-name-input').classList.add('error');
+      setTimeout(function(){ document.getElementById('welcome-name-input').classList.remove('error'); }, 400);
+      return;
+    }
+    setUsername(val);
+    var ws=document.getElementById('welcome-screen');
+    if(ws) ws.classList.add('hidden');
+    var app=document.getElementById('app');
+    if(app) app.style.display = 'block';
+    updateHeaderChip();
+    if(typeof initApp === 'function'){
+      initApp();
+    }else{
+      console.error('initApp is not a function');
+    }
+  }catch(e){
+    console.error('Error in saveUsername:', e);
+    alert('Ошибка: '+e.message);
   }
-  setUsername(val);
-  document.getElementById('welcome-screen').classList.add('hidden');
-  document.getElementById('app').style.display = 'block';
-  updateHeaderChip();
-  initApp();
 }
 
 function updateHeaderChip(){
@@ -946,52 +957,35 @@ function initApp(){
     });
   }, 60000);
   
-  // Улучшенная обработка фото для мобильных (добавить preview перед загрузкой)
-  window.handlePhotoImproved=function(input,which){
-    var file=input.files[0];if(!file)return;
-    if(file.size>5*1024*1024){alert('Файл слишком большой (макс 5MB)');return;}
-    var reader=new FileReader();
-    reader.onload=function(e){
-      var img=new Image();
-      img.onload=function(){
-        if(which==='before'){
-          _photoBeforeData=e.target.result;
-          var prev=document.getElementById('prev-before');
-          prev.src=e.target.result;prev.style.display='block';
-          document.getElementById('box-before-inner').style.display='none';
-          document.getElementById('clear-before').style.display='block';
-        }
-        else if(which==='after'){
-          _photoAfterData=e.target.result;
-          var prev=document.getElementById('prev-after');
-          prev.src=e.target.result;prev.style.display='block';
-          document.getElementById('box-after-inner').style.display='none';
-          document.getElementById('clear-after').style.display='block';
-        }
-      };
-      img.src=e.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
+  // (deprecated) improved photo handler removed to avoid nested/function duplication issues
 
 // ════════════════════════════════════════════════════
 // ENTRY POINT
 // ════════════════════════════════════════════════════
 window.onload = function(){
-  var existing = getUsername();
-  if(existing){
-    // Уже есть имя — сразу показываем карту
-    document.getElementById('welcome-screen').classList.add('hidden');
-    document.getElementById('app').style.display='block';
-    updateHeaderChip();
-    initApp();
-  }
-  // иначе welcome screen уже виден, ждём ввода имени
+  try{
+    var existing = getUsername();
+    if(existing){
+      // Уже есть имя — сразу показываем карту
+      var ws=document.getElementById('welcome-screen');
+      if(ws) ws.classList.add('hidden');
+      var app=document.getElementById('app');
+      if(app) app.style.display='block';
+      updateHeaderChip();
+      initApp();
+    }
+    // иначе welcome screen уже виден, ждём ввода имени
 
-  // Enter в welcome поле
-  document.getElementById('welcome-name-input').addEventListener('keydown',function(e){
-    if(e.key==='Enter') saveUsername();
-  });
+    // Enter в welcome поле
+    var input=document.getElementById('welcome-name-input');
+    if(input){
+      input.addEventListener('keydown',function(e){
+        if(e.key==='Enter') saveUsername();
+      });
+    }
+  }catch(e){
+    console.error('Error in window.onload:', e);
+  }
 };
 </script>
 </body>
