@@ -359,6 +359,13 @@ window.isAddingMarkerMode = false;
 var _pendingLatLng = null, _pickedDiff = 3, _photoBeforeData = null, _photoAfterData = null, _currentAfterPhotoTargetUid = null;
 var DIFF_LABELS = ['','Очень легко 😊','Легко 🙂','Средне 😐','Сложно 😤','Очень сложно 💪'];
 
+// Загрузка публичных меток
+window.loadPublicMarks = function(){
+  return fetch('data/public-marks.json')
+    .then(function(r){ return r.json(); })
+    .catch(function(e){ console.error('Ошибка загрузки меток:', e); return {marks:[]}; });
+};
+
 // ════════════════════════════════════════════════════
 // USERNAME
 // ════════════════════════════════════════════════════
@@ -885,79 +892,100 @@ window.applyFiltersAndRender = function(){
 };
 
 window.updateStats = function(){
-  var totalVol=0, totalDiff=0, completed=0, volCounts={};
-  window.appPoints.forEach(function(m){
-    if(m.vol) totalVol+=m.vol;
-    if(m.diff) totalDiff+=m.diff;
-    if(m.status==='выполнена') completed++;
-    if(m.author) volCounts[m.author]=(volCounts[m.author]||0)+m.vol;
-  });
-  document.getElementById('stat-total-cleaned').textContent=totalVol;
-  document.getElementById('stat-completed').textContent=completed;
-  var avgDiff=window.appPoints.length>0?Math.round((totalDiff/window.appPoints.length)*10)/10:0;
-  document.getElementById('stat-avg-diff').textContent=avgDiff.toFixed(1)+' ★';
-  var topVol='—';
-  if(Object.keys(volCounts).length>0){
-    var sorted=Object.entries(volCounts).sort(function(a,b){return b[1]-a[1];});
-    topVol=sorted[0][0].split(' ')[0]+' ('+sorted[0][1]+')';
+  try{
+    var totalVol=0, totalDiff=0, completed=0, volCounts={};
+    window.appPoints.forEach(function(m){
+      if(m.vol) totalVol+=m.vol;
+      if(m.diff) totalDiff+=m.diff;
+      if(m.status==='выполнена') completed++;
+      if(m.author) volCounts[m.author]=(volCounts[m.author]||0)+m.vol;
+    });
+    var el1=document.getElementById('stat-total-cleaned');
+    if(el1) el1.textContent=totalVol;
+    var el2=document.getElementById('stat-completed');
+    if(el2) el2.textContent=completed;
+    var avgDiff=window.appPoints.length>0?Math.round((totalDiff/window.appPoints.length)*10)/10:0;
+    var el3=document.getElementById('stat-avg-diff');
+    if(el3) el3.textContent=avgDiff.toFixed(1)+' ★';
+    var topVol='—';
+    if(Object.keys(volCounts).length>0){
+      var sorted=Object.entries(volCounts).sort(function(a,b){return b[1]-a[1];});
+      topVol=sorted[0][0].split(' ')[0]+' ('+sorted[0][1]+')';
+    }
+    var el4=document.getElementById('stat-top-vol');
+    if(el4) el4.textContent=topVol;
+  }catch(e){
+    console.error('Error in updateStats:', e);
   }
-  document.getElementById('stat-top-vol').textContent=topVol;
 };
 
 // ════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════
 function initApp(){
-  window.map=L.map('map',{center:[51.2333,51.3667],zoom:13,zoomControl:true});
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(window.map);
+  try{
+    var mapEl=document.getElementById('map');
+    if(!mapEl){ console.error('Map element not found'); return; }
+    
+    window.map=L.map('map',{center:[51.2333,51.3667],zoom:13,zoomControl:true});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+      {attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:20}).addTo(window.map);
 
-  window.loadPublicMarks().then(function(data){
-    var pubs = data.marks||[];
-    var mods = SS.getModifiedBase();
-    pubs.forEach(function(bp){
-      if(!bp.author && bp.org) bp.author=bp.org;
-      bp.custom=false; bp.public=true;
-      if(!bp.chat) bp.chat=[];
-      if(!bp.vol)  bp.vol=0;
-      if(mods[bp.name]){
-        var mod=mods[bp.name];
-        if(mod.status!==undefined) bp.status=mod.status;
-        if(mod.after!==undefined)  bp.after=mod.after;
-        if(mod.chat!==undefined)   bp.chat=mod.chat;
+    window.loadPublicMarks().then(function(data){
+      try{
+        var pubs = data.marks||[];
+        var mods = SS.getModifiedBase();
+        pubs.forEach(function(bp){
+          if(!bp.author && bp.org) bp.author=bp.org;
+          bp.custom=false; bp.public=true;
+          if(!bp.chat) bp.chat=[];
+          if(!bp.vol)  bp.vol=0;
+          if(mods[bp.name]){
+            var mod=mods[bp.name];
+            if(mod.status!==undefined) bp.status=mod.status;
+            if(mod.after!==undefined)  bp.after=mod.after;
+            if(mod.chat!==undefined)   bp.chat=mod.chat;
+          }
+          window.appPoints.push(bp);
+        });
+        SS.getCustom().forEach(function(cp){
+          cp.custom=true;
+          var dup=window.appPoints.find(function(p){ return p.name===cp.name&&p.public; });
+          if(!dup) window.appPoints.push(cp);
+        });
+        window.applyFiltersAndRender();
+      }catch(e){
+        console.error('Error loading marks:', e);
       }
-      window.appPoints.push(bp);
+    }).catch(function(err){
+      console.error('Error in loadPublicMarks:', err);
     });
-    SS.getCustom().forEach(function(cp){
-      cp.custom=true;
-      var dup=window.appPoints.find(function(p){ return p.name===cp.name&&p.public; });
-      if(!dup) window.appPoints.push(cp);
-    });
-    window.applyFiltersAndRender();
-  });
 
-  document.getElementById('filterSelect').addEventListener('change', window.applyFiltersAndRender);
-  document.getElementById('filterDiffSelect').addEventListener('change', window.applyFiltersAndRender);
-  document.getElementById('searchInput').addEventListener('input', window.applyFiltersAndRender);
+    var fs=document.getElementById('filterSelect');
+    if(fs) fs.addEventListener('change', window.applyFiltersAndRender);
+    var fd=document.getElementById('filterDiffSelect');
+    if(fd) fd.addEventListener('change', window.applyFiltersAndRender);
+    var si=document.getElementById('searchInput');
+    if(si) si.addEventListener('input', window.applyFiltersAndRender);
 
-  var up=new URLSearchParams(window.location.search);
-  var pLat=up.get('lat'), pLng=up.get('lng');
-  if(pLat&&pLng){
-    var tLat=parseFloat(pLat), tLng=parseFloat(pLng);
-    window.map.setView([tLat,tLng],16);
-    setTimeout(function(){
-      window.markersLayers.forEach(function(mk){
-        var ll=mk.getLatLng();
-        if(Math.abs(ll.lat-tLat)<0.0001&&Math.abs(ll.lng-tLng)<0.0001) mk.openPopup();
-      });
-    },600);
-  }
+    var up=new URLSearchParams(window.location.search);
+    var pLat=up.get('lat'), pLng=up.get('lng');
+    if(pLat&&pLng){
+      var tLat=parseFloat(pLat), tLng=parseFloat(pLng);
+      window.map.setView([tLat,tLng],16);
+      setTimeout(function(){
+        window.markersLayers.forEach(function(mk){
+          var ll=mk.getLatLng();
+          if(Math.abs(ll.lat-tLat)<0.0001&&Math.abs(ll.lng-tLng)<0.0001) mk.openPopup();
+        });
+      },600);
+    }
 
-  window.map.on('click',function(e){ if(!window.isAddingMarkerMode) return; _pendingLatLng=e.latlng; openModal(); });
+    window.map.on('click',function(e){ if(!window.isAddingMarkerMode) return; _pendingLatLng=e.latlng; openModal(); });
 
-  document.addEventListener('keydown',function(e){
-    if(e.key==='Enter'&&e.target&&e.target.classList.contains('chat-input')){
-      var uid=e.target.id.replace('inp_','');
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Enter'&&e.target&&e.target.classList.contains('chat-input')){
+        var uid=e.target.id.replace('inp_','');
       var m=window.appPoints.find(function(p){ return p.name.replace(/[^a-zA-Z0-9]/g,'_')===uid; });
       if(m) window.sendMsg(uid,m.name);
     }
