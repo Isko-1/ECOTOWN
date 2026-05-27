@@ -3,319 +3,226 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Избранные метки — Карта волонтёров</title>
+<title>Избранные — Карта волонтёров</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
-:root {
-  --green-900: #0d3320;
-  --green-800: #155232;
-  --green-600: #1e8549;
-  --green-500: #27ae60;
-  --green-400: #2ecc71;
-  --green-100: #e6f9f0;
-  --green-50:  #f4fbf7;
-  --ink:       #0f1f15;
-  --ink-mid:   #3d5c4a;
-  --ink-light: #7a9e89;
-  --border:    #d4e6db;
-  --surface:   #ffffff;
-  --bg:        #f0f7f2;
-  --red:       #e53935;
-  --orange:    #f57c00;
-  --gold:      #f59f0a;
-  --blue:      #1976d2;
-  --radius-lg: 18px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --shadow-sm: 0 2px 8px rgba(15,31,21,0.07);
-  --shadow-md: 0 6px 24px rgba(15,31,21,0.10);
-  --shadow-lg: 0 16px 48px rgba(15,31,21,0.14);
+:root{
+  --green-900:#0d3320;--green-800:#155232;--green-600:#1e8549;--green-500:#27ae60;
+  --green-400:#2ecc71;--green-100:#e6f9f0;--green-50:#f4fbf7;
+  --ink:#0f1f15;--ink-mid:#3d5c4a;--ink-light:#7a9e89;
+  --border:#d4e6db;--surface:#fff;--bg:#f0f7f2;
+  --red:#e53935;--orange:#f57c00;--gold:#f59f0a;--blue:#1976d2;
+  --radius-lg:18px;--radius-md:12px;--radius-sm:8px;
+  --shadow-sm:0 2px 8px rgba(15,31,21,.07);--shadow-md:0 6px 24px rgba(15,31,21,.10);
 }
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
 
-.page-wrap { max-width: 900px; margin: 0 auto; padding: 28px 20px 48px; }
+/* WELCOME */
+#welcome-screen{position:fixed;inset:0;z-index:99999;background:linear-gradient(145deg,var(--green-900),var(--green-800) 50%,#1a6e3c);display:flex;align-items:center;justify-content:center;}
+#welcome-screen.hidden{display:none;}
+.welcome-card{background:var(--surface);border-radius:24px;padding:44px 40px;width:400px;max-width:92vw;box-shadow:0 40px 100px rgba(0,0,0,.4);text-align:center;animation:cardIn .5s cubic-bezier(.16,1,.3,1);}
+@keyframes cardIn{from{transform:translateY(24px) scale(.95);opacity:0;}to{transform:none;opacity:1;}}
+.welcome-logo{width:64px;height:64px;background:linear-gradient(135deg,var(--gold),var(--orange));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 18px;box-shadow:0 8px 24px rgba(245,159,10,.3);}
+.welcome-title{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;margin-bottom:8px;}
+.welcome-sub{font-size:13px;color:var(--ink-mid);margin-bottom:24px;line-height:1.6;}
+.welcome-input{width:100%;border:2px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;font-size:16px;outline:none;font-family:'Manrope',sans-serif;text-align:center;transition:border-color .2s;}
+.welcome-input:focus{border-color:var(--green-600);}
+.welcome-input.error{border-color:var(--red);}
+.welcome-btn{width:100%;margin-top:16px;padding:13px;border-radius:var(--radius-md);border:none;background:linear-gradient(135deg,var(--gold),var(--orange));color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;box-shadow:0 4px 16px rgba(245,159,10,.35);}
+.welcome-btn:hover{transform:translateY(-2px);}
 
-/* HEADER */
-.page-header {
-  background: var(--surface); border-radius: var(--radius-lg);
-  border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-  padding: 20px 28px; margin-bottom: 20px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; flex-wrap: wrap;
-}
-.header-left { display: flex; align-items: center; gap: 14px; }
-.header-icon {
-  width: 48px; height: 48px;
-  background: linear-gradient(135deg, #f59f0a, #f57c00);
-  border-radius: 12px; display: flex; align-items: center; justify-content: center;
-  font-size: 22px; box-shadow: 0 4px 14px rgba(245,159,10,0.3); flex-shrink: 0;
-}
-.header-title { font-family: 'Nunito', sans-serif; font-size: 22px; font-weight: 900; color: var(--ink); }
-.header-sub { font-size: 12px; color: var(--ink-light); margin-top: 3px; font-weight: 500; }
-.count-badge {
-  display: inline-flex; align-items: center; background: var(--green-100);
-  color: var(--green-600); border-radius: 30px; padding: 4px 14px;
-  font-size: 13px; font-weight: 800; gap: 5px;
-  font-family: 'Nunito', sans-serif; border: 1px solid var(--border);
-}
-.back-btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: linear-gradient(135deg, var(--green-600), var(--green-500));
-  color: #fff; padding: 11px 20px; border-radius: var(--radius-md);
-  text-decoration: none; font-weight: 800; font-size: 13px;
-  font-family: 'Manrope', sans-serif; transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 3px 12px rgba(30,133,73,0.28); white-space: nowrap;
-}
-.back-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(30,133,73,0.38); }
+/* LAYOUT */
+#app{display:none;}
+.page-wrap{max-width:900px;margin:0 auto;padding:28px 20px 48px;}
 
-/* LOADING BAR */
-#loading-bar {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-md); padding: 14px 20px;
-  margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
-  font-size: 13px; font-weight: 600; color: var(--ink-mid);
-  box-shadow: var(--shadow-sm);
-}
-.spin { animation: spin 1s linear infinite; display: inline-block; }
-@keyframes spin { to { transform: rotate(360deg); } }
-#loading-bar.hidden { display: none; }
+.page-header{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-sm);padding:20px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+.header-left{display:flex;align-items:center;gap:14px;}
+.header-icon{width:48px;height:48px;background:linear-gradient(135deg,var(--gold),var(--orange));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 14px rgba(245,159,10,.3);flex-shrink:0;}
+.header-title{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;}
+.header-sub{font-size:12px;color:var(--ink-light);margin-top:3px;}
+.count-badge{display:inline-flex;align-items:center;background:var(--green-100);color:var(--green-600);border-radius:30px;padding:4px 14px;font-size:13px;font-weight:800;border:1px solid var(--border);}
+.user-badge{display:inline-flex;align-items:center;gap:7px;background:var(--green-50);border:1.5px solid var(--border);border-radius:30px;padding:5px 14px 5px 5px;font-size:13px;font-weight:700;}
+.user-av-sm{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--green-600),var(--green-400));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.back-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--green-600),var(--green-500));color:#fff;padding:11px 20px;border-radius:var(--radius-md);text-decoration:none;font-weight:800;font-size:13px;transition:transform .15s,box-shadow .15s;box-shadow:0 3px 12px rgba(30,133,73,.28);white-space:nowrap;}
+.back-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(30,133,73,.38);}
+.switch-btn{background:var(--surface);color:var(--ink-mid);border:1.5px solid var(--border);border-radius:var(--radius-md);padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Manrope',sans-serif;white-space:nowrap;}
+.switch-btn:hover{background:var(--border);}
 
-/* FILTERS */
-.filters-bar {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: var(--radius-md); padding: 12px 20px; margin-bottom: 20px;
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  box-shadow: var(--shadow-sm);
-}
-.filter-label { font-size: 11px; font-weight: 800; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.07em; white-space: nowrap; }
-.filter-select {
-  padding: 7px 12px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
-  font-size: 12px; font-weight: 700; color: var(--ink); outline: none;
-  background: var(--bg); font-family: 'Manrope', sans-serif; cursor: pointer; transition: border-color 0.15s;
-}
-.filter-select:focus { border-color: var(--green-600); }
-.search-input {
-  flex: 1; min-width: 160px; padding: 7px 12px; border-radius: var(--radius-sm);
-  border: 1.5px solid var(--border); font-size: 12px; font-weight: 500; color: var(--ink);
-  outline: none; background: var(--surface); font-family: 'Manrope', sans-serif; transition: border-color 0.15s;
-}
-.search-input:focus { border-color: var(--green-600); }
+.filters-bar{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 20px;margin-bottom:20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--shadow-sm);}
+.filter-label{font-size:11px;font-weight:800;color:var(--ink-light);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;}
+.filter-select{padding:7px 12px;border-radius:var(--radius-sm);border:1.5px solid var(--border);font-size:12px;font-weight:700;color:var(--ink);outline:none;background:var(--bg);font-family:'Manrope',sans-serif;cursor:pointer;}
+.search-input{flex:1;min-width:160px;padding:7px 12px;border-radius:var(--radius-sm);border:1.5px solid var(--border);font-size:12px;color:var(--ink);outline:none;background:var(--surface);font-family:'Manrope',sans-serif;}
+.search-input:focus,.filter-select:focus{border-color:var(--green-600);}
 
-/* GRID */
-.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}
+.card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s;animation:fadeUp .35s ease both;}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
 
-/* CARD */
-.card {
-  background: var(--surface); border-radius: var(--radius-lg);
-  border: 1px solid var(--border); box-shadow: var(--shadow-sm);
-  overflow: hidden; display: flex; flex-direction: column;
-  transition: transform 0.2s, box-shadow 0.2s; animation: fadeUp 0.35s ease both;
-}
-.card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
-@keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+.card-top{padding:18px 20px 14px;border-bottom:1px solid var(--border);position:relative;}
+.card-fav-star{position:absolute;top:16px;right:18px;font-size:20px;color:var(--gold);cursor:pointer;background:none;border:none;transition:transform .15s;}
+.card-fav-star:hover{transform:scale(1.25);}
+.card-name{font-family:'Nunito',sans-serif;font-size:17px;font-weight:900;margin-bottom:10px;padding-right:36px;line-height:1.3;}
+.card-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+.badge{display:inline-block;padding:3px 11px;border-radius:30px;font-size:11px;font-weight:800;}
+.badge-red{background:#fde8e6;color:#d32e22;}.badge-orange{background:#fff3e0;color:#e07b00;}.badge-green{background:#e6f9f0;color:#1a7a4a;}
+.badge-diff{background:var(--bg);color:var(--ink-mid);border:1px solid var(--border);}
+.badge-vol{background:var(--green-50);color:var(--green-600);border:1px solid var(--green-100);}
+.card-desc{font-size:13px;line-height:1.55;color:var(--ink-mid);font-weight:500;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 
-.card-top { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); position: relative; }
-.card-fav-star {
-  position: absolute; top: 16px; right: 18px; font-size: 20px;
-  color: var(--gold); cursor: pointer; transition: transform 0.15s;
-  background: none; border: none; line-height: 1;
-}
-.card-fav-star:hover { transform: scale(1.25); }
-.card-name {
-  font-family: 'Nunito', sans-serif; font-size: 17px; font-weight: 900;
-  color: var(--ink); margin-bottom: 10px; padding-right: 36px; line-height: 1.3;
-}
-.card-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
-.badge { display: inline-block; padding: 3px 11px; border-radius: 30px; font-size: 11px; font-weight: 800; }
-.badge-red    { background: #fde8e6; color: #d32e22; }
-.badge-orange { background: #fff3e0; color: #e07b00; }
-.badge-green  { background: #e6f9f0; color: #1a7a4a; }
-.badge-diff   { background: var(--bg); color: var(--ink-mid); border: 1px solid var(--border); }
-.badge-vol    { background: var(--green-50); color: var(--green-600); border: 1px solid var(--green-100); }
-.card-desc {
-  font-size: 13px; line-height: 1.55; color: var(--ink-mid); font-weight: 500;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-}
+.card-meta{padding:10px 20px;background:var(--green-50);border-bottom:1px solid var(--border);display:flex;gap:14px;flex-wrap:wrap;}
+.meta-item{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--ink-mid);}
 
-/* CARD META */
-.card-meta {
-  padding: 10px 20px; background: var(--green-50);
-  border-bottom: 1px solid var(--border); display: flex; gap: 14px; flex-wrap: wrap;
-}
-.meta-item { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--ink-mid); }
+.card-photos{padding:12px 20px;display:flex;gap:10px;border-bottom:1px solid var(--border);}
+.photo-col{flex:1;display:flex;flex-direction:column;gap:5px;}
+.photo-label-sm{font-size:10px;font-weight:800;color:var(--ink-light);text-transform:uppercase;letter-spacing:.07em;}
+.photo-img{width:100%;height:90px;object-fit:cover;border-radius:var(--radius-sm);border:1px solid var(--border);}
+.photo-empty{width:100%;height:90px;border-radius:var(--radius-sm);border:1.5px dashed var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--ink-light);}
 
-/* CARD PHOTOS */
-.card-photos { padding: 12px 20px; display: flex; gap: 10px; border-bottom: 1px solid var(--border); }
-.photo-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
-.photo-label { font-size: 10px; font-weight: 800; color: var(--ink-light); text-transform: uppercase; letter-spacing: 0.07em; }
-.photo-img { width: 100%; height: 90px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--border); }
-.photo-empty {
-  width: 100%; height: 90px; border-radius: var(--radius-sm); border: 1.5px dashed var(--border);
-  background: var(--bg); display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 600; color: var(--ink-light); text-align: center; padding: 8px;
-}
+.card-actions{padding:14px 20px;display:flex;gap:10px;flex-wrap:wrap;margin-top:auto;}
+.btn{flex:1;min-width:100px;padding:10px 14px;border-radius:var(--radius-md);border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:'Manrope',sans-serif;transition:transform .15s;}
+.btn-goto{background:linear-gradient(135deg,var(--blue),#42a5f5);color:#fff;box-shadow:0 3px 10px rgba(25,118,210,.25);}
+.btn-goto:hover{transform:translateY(-1px);}
+.btn-remove{background:#fde8e6;color:#d32e22;border:1.5px solid #fbc8c4;}
+.btn-remove:hover{background:#fbc8c4;}
 
-/* CARD ACTIONS */
-.card-actions { padding: 14px 20px; display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
-.btn {
-  flex: 1; min-width: 100px; padding: 10px 14px; border-radius: var(--radius-md);
-  border: none; font-size: 12px; font-weight: 800; cursor: pointer;
-  font-family: 'Manrope', sans-serif; transition: transform 0.15s, box-shadow 0.15s, background 0.15s; text-align: center;
-}
-.btn-goto { background: linear-gradient(135deg, var(--blue), #42a5f5); color: #fff; box-shadow: 0 3px 10px rgba(25,118,210,0.25); }
-.btn-goto:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(25,118,210,0.35); }
-.btn-remove { background: #fde8e6; color: #d32e22; border: 1.5px solid #fbc8c4; }
-.btn-remove:hover { background: #fbc8c4; transform: translateY(-1px); }
+.empty-state{background:var(--surface);border-radius:var(--radius-lg);border:1.5px dashed var(--border);padding:60px 40px;text-align:center;grid-column:1/-1;}
+.empty-icon{font-size:56px;margin-bottom:16px;display:block;opacity:.7;}
+.empty-title{font-family:'Nunito',sans-serif;font-size:20px;font-weight:900;margin-bottom:8px;}
+.empty-sub{font-size:14px;color:var(--ink-light);margin-bottom:24px;line-height:1.6;}
+.empty-btn{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--green-600),var(--green-500));color:#fff;padding:12px 24px;border-radius:var(--radius-md);text-decoration:none;font-weight:800;font-size:14px;box-shadow:0 4px 14px rgba(30,133,73,.3);}
+.empty-btn:hover{transform:translateY(-2px);}
 
-/* JOIN BUTTON */
-.btn-join {
-  background: linear-gradient(135deg, var(--green-600), var(--green-400));
-  color: #fff; box-shadow: 0 3px 10px rgba(30,133,73,0.25);
-}
-.btn-join:hover { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(30,133,73,0.35); }
-.btn-join.joined {
-  background: linear-gradient(135deg, #f57c00, #ffa726);
-  box-shadow: 0 3px 10px rgba(245,124,0,0.25);
-}
-.btn-join:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+#loading{text-align:center;padding:60px;color:var(--ink-light);font-weight:600;font-size:15px;grid-column:1/-1;}
+.stars{color:var(--gold);font-size:13px;}.stars .off{color:var(--border);}
 
-.vol-count-inline {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 800;
-  background: var(--green-100); color: var(--green-800);
-  padding: 3px 10px; border-radius: 20px;
-  border: 1px solid var(--green-100);
-  transition: background 0.3s;
-}
-.vol-count-inline.bump { background: #b6f0d0; }
-
-/* EMPTY */
-.empty-state {
-  background: var(--surface); border-radius: var(--radius-lg); border: 1.5px dashed var(--border);
-  padding: 60px 40px; text-align: center; animation: fadeUp 0.4s ease;
-}
-.empty-icon { font-size: 56px; margin-bottom: 16px; display: block; opacity: 0.7; }
-.empty-title { font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 900; color: var(--ink); margin-bottom: 8px; }
-.empty-sub { font-size: 14px; color: var(--ink-light); margin-bottom: 24px; line-height: 1.6; font-weight: 500; }
-.empty-btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: linear-gradient(135deg, var(--green-600), var(--green-500));
-  color: #fff; padding: 12px 24px; border-radius: var(--radius-md);
-  text-decoration: none; font-weight: 800; font-size: 14px;
-  font-family: 'Manrope', sans-serif; transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px rgba(30,133,73,0.3);
-}
-.empty-btn:hover { transform: translateY(-2px); box-shadow: 0 7px 20px rgba(30,133,73,0.4); }
-
-/* STARS */
-.stars { color: var(--gold); font-size: 13px; letter-spacing: 1px; }
-.stars .off { color: var(--border); }
-
-/* TOAST */
-#toast {
-  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
-  background: var(--ink); color: #fff; padding: 12px 24px;
-  border-radius: 30px; font-size: 13px; font-weight: 700;
-  z-index: 9999; opacity: 0; pointer-events: none;
-  transition: opacity 0.25s; white-space: nowrap; box-shadow: var(--shadow-lg);
-}
-#toast.show { opacity: 1; }
-#toast.success { background: var(--green-600); }
-#toast.error   { background: var(--red); }
-
-@media (max-width: 600px) {
-  .page-wrap { padding: 14px 12px 32px; }
-  .page-header { padding: 16px 18px; }
-  .header-title { font-size: 18px; }
-  .cards-grid { grid-template-columns: 1fr; }
-}
+@media(max-width:600px){.page-wrap{padding:14px 12px 32px;}.cards-grid{grid-template-columns:1fr;}.header-right{gap:8px;}}
 </style>
 </head>
 <body>
 
-<div class="page-wrap">
-
-  <div class="page-header">
-    <div class="header-left">
-      <div class="header-icon">⭐</div>
-      <div>
-        <div class="header-title">Избранные метки</div>
-        <div class="header-sub">Сохранённые места уборки</div>
-      </div>
-      <span class="count-badge" id="count-badge">0 меток</span>
-    </div>
-    <a href="./index.html" class="back-btn">← Назад к карте</a>
+<!-- Экран входа -->
+<div id="welcome-screen">
+  <div class="welcome-card">
+    <div class="welcome-logo">⭐</div>
+    <div class="welcome-title">Избранные метки</div>
+    <div class="welcome-sub">Введите имя, чтобы увидеть свои избранные места</div>
+    <input id="welcome-input" class="welcome-input" placeholder="Например: Айгерим" maxlength="30" autocomplete="off"/>
+    <button class="welcome-btn" onclick="enterFavs()">Посмотреть избранное →</button>
   </div>
-
-  <div id="loading-bar">
-    <span class="spin">⏳</span> Загружаем метки с сервера…
-  </div>
-
-  <div class="filters-bar">
-    <span class="filter-label">Фильтры:</span>
-    <input type="text" class="search-input" id="searchInput" placeholder="🔍 Поиск по названию…"/>
-    <select class="filter-select" id="filterStatus">
-      <option value="all">Все статусы</option>
-      <option value="новая">🔴 Новая</option>
-      <option value="в работе">🟠 В работе</option>
-      <option value="выполнена">✅ Выполнена</option>
-    </select>
-    <select class="filter-select" id="filterDiff">
-      <option value="all">Вся сложность</option>
-      <option value="1">★ Очень легко</option>
-      <option value="2">★★ Легко</option>
-      <option value="3">★★★ Средне</option>
-      <option value="4">★★★★ Сложно</option>
-      <option value="5">★★★★★ Очень сложно</option>
-    </select>
-  </div>
-
-  <div class="cards-grid" id="list"></div>
 </div>
 
-<div id="toast"></div>
+<div id="app">
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="header-left">
+        <div class="header-icon">⭐</div>
+        <div>
+          <div class="header-title">Избранные метки</div>
+          <div class="header-sub">Сохранённые места уборки</div>
+        </div>
+        <span class="count-badge" id="count-badge">0 меток</span>
+      </div>
+      <div class="header-right">
+        <div class="user-badge">
+          <div class="user-av-sm" id="user-av">?</div>
+          <span id="user-name-display">...</span>
+        </div>
+        <button class="switch-btn" onclick="switchUser()">↩ Сменить</button>
+        <a href="./index.html" class="back-btn">← Назад к карте</a>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <span class="filter-label">Фильтры:</span>
+      <input type="text" class="search-input" id="searchInput" placeholder="🔍 Поиск по названию..."/>
+      <select class="filter-select" id="filterStatus">
+        <option value="all">Все статусы</option>
+        <option value="новая">🔴 Новая</option>
+        <option value="в работе">🟠 В работе</option>
+        <option value="выполнена">✅ Выполнена</option>
+      </select>
+      <select class="filter-select" id="filterDiff">
+        <option value="all">Вся сложность</option>
+        <option value="1">★ Очень легко</option>
+        <option value="2">★★ Легко</option>
+        <option value="3">★★★ Средне</option>
+        <option value="4">★★★★ Сложно</option>
+        <option value="5">★★★★★ Очень сложно</option>
+      </select>
+    </div>
+
+    <div class="cards-grid" id="list">
+      <div id="loading">⏳ Загрузка избранного...</div>
+    </div>
+  </div>
+</div>
 
 <script>
-// ════════════════════════════════════════
-// CONFIG — те же данные что в index.html
-// ════════════════════════════════════════
-var JSONBIN_KEY    = '$2a$10$e.BCPaLrRSQltnw/odSU9OHpzycRVLsbRBvmumAhkPtW1.QMJtT52';
-var JSONBIN_BIN_ID = '6a1320f96610dd3ae89ad865';
-var JSONBIN_URL    = 'https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID;
+firebase.initializeApp({ databaseURL: "https://ecotown-e0a36-default-rtdb.firebaseio.com/" });
+var db = firebase.database();
 
-// ════════════════════════════════════════
-// STATE
-// ════════════════════════════════════════
-var allPoints = [];   // custom (localStorage) + public (JSONBin)
-var _joinInProgress = {};
+var _username = '';
+var _allMarks = {};   // firebaseKey -> mark
+var _myFavKeys = {};  // firebaseKey -> true
 
-// ════════════════════════════════════════
-// HELPERS
-// ════════════════════════════════════════
-function getUsername(){ return localStorage.getItem('vol_username') || 'Аноним'; }
+function getUsername(){ return _username; }
 
-function getFavs(){ try{ return JSON.parse(localStorage.getItem('favorite_marks')||'[]'); }catch(e){ return []; } }
-function saveFavs(a){ localStorage.setItem('favorite_marks', JSON.stringify(a)); }
-function removeFav(name){ saveFavs(getFavs().filter(function(f){ return f!==name; })); render(); }
+function userKey(name){ return name.replace(/[^a-zA-Z0-9_]/g,'_'); }
+function favsRef(name){ return db.ref('users/'+userKey(name)+'/favorites'); }
 
-// localStorage joined / vol per mark
-var SS = {
-  key: function(n,s){ return 'vol_'+n.replace(/[^a-z0-9]/gi,'_')+'_'+s; },
-  getJoined:   function(n){ return localStorage.getItem(SS.key(n,'joined'))==='1'; },
-  setJoined:   function(n,v){ localStorage.setItem(SS.key(n,'joined'),v?'1':'0'); },
-  getVolCount: function(n,base){ var v=localStorage.getItem(SS.key(n,'vol')); return v!==null?parseInt(v):base; },
-  setVolCount: function(n,v){ localStorage.setItem(SS.key(n,'vol'),String(v)); }
-};
-
-function showToast(msg, type, ms){
-  var t=document.getElementById('toast');
-  t.textContent=msg; t.className='show '+(type||'');
-  clearTimeout(t._t); t._t=setTimeout(function(){ t.className=''; }, ms||2500);
+function enterFavs(){
+  var val = document.getElementById('welcome-input').value.trim();
+  if(!val){
+    document.getElementById('welcome-input').style.borderColor='#e53935';
+    setTimeout(function(){ document.getElementById('welcome-input').style.borderColor=''; },400);
+    return;
+  }
+  _username = val;
+  document.getElementById('welcome-screen').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('user-av').textContent = val.charAt(0).toUpperCase();
+  document.getElementById('user-name-display').textContent = val;
+  loadData();
 }
 
-function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function switchUser(){
+  _username = '';
+  _myFavKeys = {};
+  _allMarks = {};
+  db.ref('marks').off();
+  favsRef(_username).off();
+  document.getElementById('welcome-input').value = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('welcome-screen').classList.remove('hidden');
+}
+
+function loadData(){
+  // Слушаем все метки
+  db.ref('marks').on('value', function(snap){
+    _allMarks = snap.val() || {};
+    render();
+  });
+  // Слушаем избранное текущего пользователя
+  favsRef(_username).on('value', function(snap){
+    _myFavKeys = snap.val() || {};
+    render();
+  });
+}
+
+function removeFav(firebaseKey){
+  favsRef(_username).child(firebaseKey).remove();
+  // Обновление придёт через on('value')
+}
+
+function goToMap(lat, lng){
+  window.location.href = './index.html?lat='+lat+'&lng='+lng;
+}
 
 function badgeHtml(status){
   if(status==='новая')    return '<span class="badge badge-red">🔴 Новая</span>';
@@ -329,7 +236,9 @@ function starsHtml(n){
   return s+'</span>';
 }
 
-function plural(n,one,few,many){
+function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function plural(n, one, few, many){
   var m=Math.abs(n)%100, m1=m%10;
   if(m>10&&m<20) return many;
   if(m1>1&&m1<5) return few;
@@ -337,242 +246,86 @@ function plural(n,one,few,many){
   return many;
 }
 
-// ════════════════════════════════════════
-// LOAD PUBLIC MARKS FROM JSONBIN
-// ════════════════════════════════════════
-function loadPublicMarks(){
-  return fetch(JSONBIN_URL+'/latest', {
-    headers: { 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Meta': 'false' }
-  })
-  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(function(data){ return data.marks||[]; })
-  .catch(function(e){ console.error(e); showToast('⚠️ Ошибка загрузки меток', 'error'); return []; });
-}
-
-function savePublicMarks(marks){
-  var toSave = marks.map(function(m){
-    var c = Object.assign({}, m);
-    if(c.before && c.before.length > 5000) c.before = null;
-    if(c.after  && c.after.length  > 5000) c.after  = null;
-    c.chat = c.chat ? c.chat.slice(-10) : [];
-    return c;
-  });
-  return fetch(JSONBIN_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type':'application/json', 'X-Master-Key': JSONBIN_KEY },
-    body: JSON.stringify({ marks: toSave })
-  }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); });
-}
-
-// ════════════════════════════════════════
-// TOGGLE JOIN — обновляет JSONBin для всех
-// ════════════════════════════════════════
-window.toggleJoin = function(name){
-  if(_joinInProgress[name]) return;
-  _joinInProgress[name] = true;
-
-  var m = allPoints.find(function(p){ return p.name===name; });
-  if(!m){ _joinInProgress[name]=false; return; }
-
-  var joined  = SS.getJoined(name);
-  var volNow  = SS.getVolCount(name, m.vol||0);
-  var newVol  = joined ? Math.max(0, volNow-1) : volNow+1;
-  var newJoin = !joined;
-
-  SS.setJoined(name, newJoin);
-  SS.setVolCount(name, newVol);
-  m.vol = newVol;
-
-  // Update status locally
-  if(newJoin && m.status==='новая'){ m.status='в работе'; }
-
-  // Update button immediately (optimistic)
-  updateJoinBtn(name, newJoin, newVol);
-  showToast(newJoin ? '✅ '+getUsername()+', вы присоединились!' : 'Вы отменили участие.', newJoin?'success':'');
-
-  // If public mark — sync to JSONBin so Назар and others see the change
-  if(m.public){
-    loadPublicMarks().then(function(pubs){
-      var idx = pubs.findIndex(function(p){ return p.name===name; });
-      if(idx!==-1){
-        pubs[idx].vol    = newVol;
-        pubs[idx].status = m.status;
-        return savePublicMarks(pubs).then(function(){
-          showToast('🔄 Обновлено для всех волонтёров', 'success');
-        });
-      }
-    }).catch(function(){ showToast('⚠️ Не удалось синхронизировать', 'error'); })
-      .finally(function(){ _joinInProgress[name]=false; });
-  } else {
-    // custom mark — save locally
-    var custom = [];
-    try{ custom=JSON.parse(localStorage.getItem('custom_pts')||'[]'); }catch(e){}
-    var ci = custom.findIndex(function(p){ return p.name===name; });
-    if(ci!==-1){ custom[ci].vol=newVol; custom[ci].status=m.status; }
-    localStorage.setItem('custom_pts', JSON.stringify(custom));
-    _joinInProgress[name]=false;
-  }
-};
-
-function updateJoinBtn(name, joined, vol){
-  var uid = name.replace(/[^a-zA-Z0-9]/g,'_');
-  var btn = document.getElementById('jbtn_'+uid);
-  var cnt = document.getElementById('jcnt_'+uid);
-  if(btn){
-    btn.textContent = joined ? '🙋 Вы участвуете' : '🙋 Присоединиться';
-    btn.className   = 'btn btn-join'+(joined?' joined':'');
-  }
-  if(cnt){
-    cnt.textContent = vol+' уч.';
-    cnt.classList.add('bump');
-    setTimeout(function(){ cnt.classList.remove('bump'); }, 400);
-  }
-}
-
-// ════════════════════════════════════════
-// RENDER
-// ════════════════════════════════════════
 function render(){
-  var favs     = getFavs();
-  var search   = document.getElementById('searchInput').value.toLowerCase().trim();
-  var stFilter = document.getElementById('filterStatus').value;
-  var dfFilter = document.getElementById('filterDiff').value;
-  var listEl   = document.getElementById('list');
-  var badge    = document.getElementById('count-badge');
+  var search  = document.getElementById('searchInput').value.toLowerCase().trim();
+  var stFilt  = document.getElementById('filterStatus').value;
+  var dfFilt  = document.getElementById('filterDiff').value;
+  var list    = document.getElementById('list');
+  var badge   = document.getElementById('count-badge');
 
-  badge.textContent = favs.length + ' ' + plural(favs.length,'метка','метки','меток');
+  var favKeys = Object.keys(_myFavKeys);
+  badge.textContent = favKeys.length + ' ' + plural(favKeys.length,'метка','метки','меток');
 
-  if(!favs.length){
-    listEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1">'
-      +'<span class="empty-icon">⭐</span>'
-      +'<div class="empty-title">Нет избранных меток</div>'
-      +'<div class="empty-sub">Откройте карту, нажмите на метку и добавьте её в избранное,<br>чтобы быстро находить её здесь.</div>'
-      +'<a href="./index.html" class="empty-btn">🗺️ Открыть карту</a>'
-      +'</div>';
+  if(!favKeys.length){
+    list.innerHTML='<div class="empty-state"><span class="empty-icon">⭐</span><div class="empty-title">Нет избранных меток</div><div class="empty-sub">Откройте карту, нажмите на метку<br>и добавьте её в избранное.</div><a href="./index.html" class="empty-btn">🗺️ Открыть карту</a></div>';
     return;
   }
 
-  var filtered = favs.reduce(function(acc, name){
-    var p = allPoints.find(function(pt){ return pt.name===name; });
-    if(!p) return acc;
-    if(search && p.name.toLowerCase().indexOf(search)===-1 && p.desc.toLowerCase().indexOf(search)===-1) return acc;
-    if(stFilter!=='all' && p.status!==stFilter) return acc;
-    if(dfFilter!=='all' && String(p.diff)!==dfFilter) return acc;
-    acc.push(p);
+  // Фильтрация
+  var filtered = favKeys.reduce(function(acc, fkey){
+    var m = _allMarks[fkey];
+    if(!m) return acc; // метка удалена
+    if(search && (m.name||'').toLowerCase().indexOf(search)===-1 && (m.desc||'').toLowerCase().indexOf(search)===-1) return acc;
+    if(stFilt!=='all' && m.status!==stFilt) return acc;
+    if(dfFilt!=='all' && String(m.diff)!==dfFilt) return acc;
+    acc.push({key:fkey, mark:m});
     return acc;
-  }, []);
+  },[]);
 
   if(!filtered.length){
-    listEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1">'
-      +'<span class="empty-icon">🔍</span>'
-      +'<div class="empty-title">Ничего не найдено</div>'
-      +'<div class="empty-sub">Попробуйте изменить фильтры или поисковый запрос.</div>'
-      +'</div>';
+    list.innerHTML='<div class="empty-state"><span class="empty-icon">🔍</span><div class="empty-title">Ничего не найдено</div><div class="empty-sub">Попробуйте изменить фильтры.</div></div>';
     return;
   }
 
   var html = '';
-  filtered.forEach(function(p, idx){
-    var delay  = (idx*0.05).toFixed(2)+'s';
-    var uid    = p.name.replace(/[^a-zA-Z0-9]/g,'_');
-    var joined = SS.getJoined(p.name);
-    var vol    = SS.getVolCount(p.name, p.vol||0);
-    var hasBefore = p.before && p.before.length>10;
-    var hasAfter  = p.after  && p.after.length>10;
-    var showPhotos = hasBefore || hasAfter;
+  filtered.forEach(function(item, idx){
+    var m = item.mark, fkey = item.key;
+    var delay = (idx*0.05).toFixed(2)+'s';
+    var hasBefore = m.before && m.before.length>10;
+    var hasAfter  = m.after  && m.after.length>10;
+    var showPhotos = hasBefore||hasAfter;
+    var diffLabels=['','Очень легко','Легко','Средне','Сложно','Очень сложно'];
 
-    html += '<div class="card" style="animation-delay:'+delay+'">';
-
-    // TOP
-    html += '<div class="card-top">'
-      +'<button class="card-fav-star" onclick="removeFav(\''+escHtml(p.name)+'\')" title="Убрать из избранного">⭐</button>'
-      +'<div class="card-name">'+escHtml(p.name)+'</div>'
-      +'<div class="card-badges">'
-        +badgeHtml(p.status)
-        +(p.diff?'<span class="badge badge-diff">'+starsHtml(p.diff)+'</span>':'')
-        +(p.public?'<span class="badge" style="background:#e6f0ff;color:#1a4fa3">🌍 Общая</span>':'')
+    html+='<div class="card" style="animation-delay:'+delay+'">'
+      +'<div class="card-top">'
+      +'<button class="card-fav-star" onclick="removeFav(\''+fkey+'\')" title="Убрать из избранного">⭐</button>'
+      +'<div class="card-name">'+escHtml(m.name)+'</div>'
+      +'<div class="card-badges">'+badgeHtml(m.status)
+      +(m.diff?'<span class="badge badge-diff">'+starsHtml(m.diff)+'</span>':'')
+      +((m.vol||0)>0?'<span class="badge badge-vol">🙋 '+(m.vol||0)+' вол.</span>':'')
       +'</div>'
-      +'<div class="card-desc">'+escHtml(p.desc)+'</div>'
+      +'<div class="card-desc">'+escHtml(m.desc)+'</div>'
+      +'</div>'
+
+      +'<div class="card-meta">'
+      +(m.author?'<div class="meta-item">👤 '+escHtml(m.author)+'</div>':'')
+      +(m.diff?'<div class="meta-item">💪 '+escHtml(diffLabels[m.diff]||'')+'</div>':'')
+      +'<div class="meta-item">📍 '+escHtml((m.lat||0).toFixed(4))+', '+escHtml((m.lng||0).toFixed(4))+'</div>'
       +'</div>';
 
-    // META
-    html += '<div class="card-meta">'
-      +(p.author?'<div class="meta-item">👤 '+escHtml(p.author)+'</div>':'')
-      +'<div class="meta-item">📍 '+p.lat.toFixed(4)+', '+p.lng.toFixed(4)+'</div>'
-      +(p.diff?'<div class="meta-item">💪 '+['','Очень легко','Легко','Средне','Сложно','Очень сложно'][p.diff]+'</div>':'')
-      +'<div class="meta-item">🙋 <span class="vol-count-inline" id="jcnt_'+uid+'">'+vol+' уч.</span></div>'
-      +'</div>';
-
-    // PHOTOS
     if(showPhotos){
-      html += '<div class="card-photos">'
-        +'<div class="photo-col"><div class="photo-label">До</div>'
-          +(hasBefore?'<img class="photo-img" src="'+p.before+'" loading="lazy" alt="До"/>':'<div class="photo-empty">Нет фото</div>')
+      html+='<div class="card-photos">'
+        +'<div class="photo-col"><div class="photo-label-sm">До</div>'
+        +(hasBefore?'<img class="photo-img" src="'+m.before+'" loading="lazy"/>':'<div class="photo-empty">Нет фото</div>')
         +'</div>'
-        +'<div class="photo-col"><div class="photo-label">После</div>'
-          +(hasAfter?'<img class="photo-img" src="'+p.after+'" loading="lazy" alt="После"/>':'<div class="photo-empty">Не добавлено</div>')
-        +'</div>'
-        +'</div>';
+        +'<div class="photo-col"><div class="photo-label-sm">После</div>'
+        +(hasAfter?'<img class="photo-img" src="'+m.after+'" loading="lazy"/>':'<div class="photo-empty">Не добавлено</div>')
+        +'</div></div>';
     }
 
-    // ACTIONS
-    html += '<div class="card-actions">'
-      +'<button class="btn btn-join'+(joined?' joined':'')+'" id="jbtn_'+uid+'" onclick="toggleJoin(\''+escHtml(p.name)+'\')">'
-        +(joined?'🙋 Вы участвуете':'🙋 Присоединиться')
-      +'</button>'
-      +'<button class="btn btn-goto" onclick="goToMap('+p.lat+','+p.lng+')">📍 На карте</button>'
-      +'<button class="btn btn-remove" onclick="removeFav(\''+escHtml(p.name)+'\')">✕</button>'
-      +'</div>';
-
-    html += '</div>';
+    html+='<div class="card-actions">'
+      +'<button class="btn btn-goto" onclick="goToMap('+m.lat+','+m.lng+')">📍 Перейти на карте</button>'
+      +'<button class="btn btn-remove" onclick="removeFav(\''+fkey+'\')">✕ Удалить</button>'
+      +'</div></div>';
   });
 
-  listEl.innerHTML = html;
+  list.innerHTML = html;
 }
 
-function goToMap(lat, lng){
-  window.location.href = './index.html?lat='+lat+'&lng='+lng;
-}
-
-// ════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════
 document.getElementById('searchInput').addEventListener('input', render);
 document.getElementById('filterStatus').addEventListener('change', render);
 document.getElementById('filterDiff').addEventListener('change', render);
-
-// Load points: custom (localStorage) + public (JSONBin)
-var custom = [];
-try{ custom = JSON.parse(localStorage.getItem('custom_pts')||'[]'); }catch(e){}
-
-// Merge modified statuses
-var mods = {};
-try{ mods = JSON.parse(localStorage.getItem('modified_base_pts')||'{}'); }catch(e){}
-
-loadPublicMarks().then(function(pubs){
-  document.getElementById('loading-bar').classList.add('hidden');
-
-  pubs.forEach(function(bp){
-    if(!bp.author && bp.org) bp.author=bp.org;
-    bp.custom=false; bp.public=true;
-    if(!bp.chat) bp.chat=[];
-    if(!bp.vol)  bp.vol=0;
-    if(mods[bp.name]){
-      var mod=mods[bp.name];
-      if(mod.status!==undefined) bp.status=mod.status;
-      if(mod.after!==undefined)  bp.after=mod.after;
-    }
-    allPoints.push(bp);
-  });
-
-  custom.forEach(function(cp){
-    cp.custom=true;
-    var dup = allPoints.find(function(p){ return p.name===cp.name&&p.public; });
-    if(!dup) allPoints.push(cp);
-  });
-
-  render();
-});
+document.getElementById('welcome-input').addEventListener('keydown', function(e){ if(e.key==='Enter') enterFavs(); });
 </script>
 </body>
 </html>
