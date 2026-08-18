@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: var(--font-manrope);
+  --font-body: var(--font-inter);
+}
+
+body {
+  @apply bg-white text-eco-900 antialiased;
+}
+
+/* Leaflet требует явную высоту у контейнера карты + собственные стили пакета leaflet/dist/leaflet.css, подключены в MapView */
+.leaflet-container {
+  font-family: var(--font-body), sans-serif;
+}
