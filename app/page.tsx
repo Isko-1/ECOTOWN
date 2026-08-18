@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MapPin, Users, ImageIcon, UserPlus, PenLine, HandHeart, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { ContactForm } from "@/components/ContactForm";
 
 const pillars = [
   {
@@ -116,24 +117,7 @@ function ContactSection() {
       <div className="mx-auto max-w-2xl px-4 text-center">
         <h2 className="font-display text-2xl font-bold text-eco-900 md:text-3xl">Свяжитесь с нами</h2>
         <p className="mt-2 text-eco-700">Вопросы, предложения по партнёрству или спонсорству — пишите.</p>
-        <form className="mt-8 flex flex-col gap-4 text-left">
-          <input
-            type="text"
-            placeholder="Имя"
-            className="h-11 rounded-lg border border-eco-200 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-500"
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            className="h-11 rounded-lg border border-eco-200 px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-500"
-          />
-          <textarea
-            placeholder="Сообщение"
-            rows={4}
-            className="rounded-lg border border-eco-200 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eco-500"
-          />
-          <Button type="submit" className="self-start">Отправить</Button>
-        </form>
+        <ContactForm />
       </div>
     </section>
   );
