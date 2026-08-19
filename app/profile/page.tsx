@@ -16,14 +16,15 @@ export default async function ProfilePage() {
 
   // На случай, если триггер handle_new_user почему-то не создал строку профиля
   const safeProfile: Profile =
-    profile ?? {
-      id: user.id,
-      display_name: user.email?.split("@")[0] ?? "Волонтёр",
-      avatar_url: null,
-      bio: null,
-      city: null,
-      created_at: new Date().toISOString(),
-    };
+  profile ?? {
+    id: user.id,
+    display_name: user.email?.split("@")[0] ?? "Волонтёр",
+    avatar_url: null,
+    bio: null,
+    city: null,
+    role: "user",
+    created_at: new Date().toISOString(),
+  };
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
