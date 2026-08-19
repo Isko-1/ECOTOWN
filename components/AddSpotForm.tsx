@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star } from "lucide-react";
+import { Star, Info } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compressImage";
 import type { SpotStatus } from "@/lib/types";
@@ -53,19 +53,45 @@ export function AddSpotForm({
         afterFile ? uploadPhoto(afterFile, userId) : Promise.resolve(null),
       ]);
 
-      const { error: insertError } = await supabase.from("spots").insert({
-        created_by: userId,
-        title,
-        description,
-        lat,
-        lng,
-        status,
-        difficulty,
-        is_public: isPublic,
-        photo_before_url,
-        photo_after_url,
-      });
+      const { data: insertData, error: insertError } = await supabase
+        .from("spots")
+        .insert({
+          created_by: userId,
+          title,
+          description,
+          lat,
+          lng,
+          status,
+          difficulty,
+          is_public: isPublic,
+          photo_before_url,
+          photo_after_url,
+        })
+        .select("id")
+        .single();
       if (insertError) throw insertError;
+
+      // Получаем имя создателя для письма
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", userId)
+        .single();
+
+      // Уведомляем администратора — ошибка отправки не блокирует создание метки
+      fetch("/api/notify-spot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          spotId: insertData?.id ?? "",
+          spotTitle: title,
+          description,
+          difficulty,
+          lat,
+          lng,
+          creatorName: profileData?.display_name ?? "",
+        }),
+      }).catch(() => {});
 
       onCreated();
     } catch (err) {
@@ -130,6 +156,15 @@ export function AddSpotForm({
             только волонтёр, который возьмёт метку в работу (кнопка появится в карточке метки на карте).
           </p>
         )}
+      </div>
+
+      {/* ── Куда уходит заявка ── */}
+      <div className="flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5">
+        <Info size={15} className="mt-0.5 shrink-0 text-blue-500" />
+        <p className="text-xs leading-relaxed text-blue-700">
+          Метка появится на публичной карте EcoTown. Администратор получит уведомление
+          на почту <strong>iskair12@gmail.com</strong> и при необходимости свяжется с вами.
+        </p>
       </div>
 
       <div>

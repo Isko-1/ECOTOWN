@@ -6,6 +6,7 @@ export type Profile = {
   avatar_url: string | null;
   bio: string | null;
   city: string | null;
+  phone: string | null;   // номер телефона — доп. контакт волонтёра
   role: "user" | "admin";
   created_at: string;
 };
@@ -58,6 +59,7 @@ export type SpotDonation = {
   purpose_text: string;
   goal_amount: number;
   collected_amount: number;
+  contact_phone: string | null;
   status: DonationStatus;
   created_at: string;
   approved_at: string | null;

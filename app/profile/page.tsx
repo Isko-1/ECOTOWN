@@ -22,6 +22,7 @@ export default async function ProfilePage() {
     avatar_url: null,
     bio: null,
     city: null,
+    phone: null,
     role: "user",
     created_at: new Date().toISOString(),
   };

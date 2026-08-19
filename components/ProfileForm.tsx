@@ -27,6 +27,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
 
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [city, setCity] = useState(profile.city ?? "");
+  const [phone, setPhone] = useState(profile.phone ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -53,6 +54,7 @@ export function ProfileForm({ profile }: { profile: Profile }) {
         .update({
           display_name: displayName,
           city: city || null,
+          phone: phone || null,
           bio: bio || null,
           avatar_url: newAvatarUrl,
         })
@@ -97,6 +99,11 @@ export function ProfileForm({ profile }: { profile: Profile }) {
       <div>
         <label className="mb-1 block text-sm font-medium text-eco-800">Город / район</label>
         <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Уральск, Ленинский" />
+      </div>
+
+      <div>
+        <label className="mb-1 block text-sm font-medium text-eco-800">Номер телефона (для связи и Kaspi)</label>
+        <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+7 (705) 000-00-00" />
       </div>
 
       <div>

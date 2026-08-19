@@ -31,6 +31,7 @@ export function DonationRequestForm({
   const [open, setOpen] = useState(false);
   const [purpose, setPurpose] = useState("");
   const [goal, setGoal] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +52,7 @@ export function DonationRequestForm({
         requested_by: userId,
         purpose_text: purpose,
         goal_amount: goalAmount,
+        contact_phone: phone || null,
       });
       if (insertError) throw insertError;
 
@@ -58,7 +60,7 @@ export function DonationRequestForm({
       fetch("/api/donation-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spotId, spotTitle, purpose, goalAmount, requesterName }),
+        body: JSON.stringify({ spotId, spotTitle, purpose, goalAmount, requesterName, contactPhone: phone }),
       }).catch(() => {});
 
       onDone();
@@ -99,6 +101,16 @@ export function DonationRequestForm({
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
           placeholder="9000"
+          className="text-xs"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs font-medium text-eco-800">Контактный телефон (Kaspi / WhatsApp)</label>
+        <Input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="+7 (705) 000-00-00"
           className="text-xs"
         />
       </div>

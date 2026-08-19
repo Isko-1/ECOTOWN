@@ -20,7 +20,7 @@ const links = [
 export function Header() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<Pick<Profile, "display_name" | "avatar_url"> | null>(null);
+  const [profile, setProfile] = useState<Pick<Profile, "display_name" | "avatar_url" | "role"> | null>(null);
   const [supabase] = useState(() => createClient());
   const router = useRouter();
 
@@ -41,7 +41,7 @@ export function Header() {
     }
     supabase
       .from("profiles")
-      .select("display_name, avatar_url")
+      .select("display_name, avatar_url, role")
       .eq("id", user.id)
       .single()
       .then(({ data }) => setProfile(data));
@@ -69,6 +69,11 @@ export function Header() {
               {l.label}
             </Link>
           ))}
+          {profile?.role === "admin" && (
+            <Link href="/admin" className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900 hover:bg-amber-200">
+              Админка
+            </Link>
+          )}
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -120,6 +125,15 @@ export function Header() {
             {l.label}
           </Link>
         ))}
+        {profile?.role === "admin" && (
+          <Link
+            href="/admin"
+            onClick={() => setOpen(false)}
+            className="rounded-lg bg-amber-50 px-3 py-3 text-base font-bold text-amber-900 hover:bg-amber-100"
+          >
+            ⚙️ Админ-панель
+          </Link>
+        )}
         <div className="mt-4 flex flex-col gap-2 border-t border-eco-100 pt-4">
           {user ? (
             <>
