@@ -15,11 +15,15 @@ export function MapFilters({
   onStatusFilterChange,
   minDifficulty,
   onMinDifficultyChange,
+  maxDifficulty,
+  onMaxDifficultyChange,
 }: {
   statusFilter: Set<SpotStatus>;
   onStatusFilterChange: (next: Set<SpotStatus>) => void;
   minDifficulty: number;
   onMinDifficultyChange: (value: number) => void;
+  maxDifficulty: number;
+  onMaxDifficultyChange: (value: number) => void;
 }) {
   function toggleStatus(value: SpotStatus) {
     const next = new Set(statusFilter);
@@ -52,25 +56,59 @@ export function MapFilters({
         })}
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs text-eco-500">Сложность от:</span>
-        <div className="flex gap-0.5">
-          {Array.from({ length: 5 }).map((_, i) => {
-            const value = i + 1;
-            return (
-              <button
-                key={value}
-                type="button"
-                aria-label={`От сложности ${value}`}
-                onClick={() => onMinDifficultyChange(minDifficulty === value ? 1 : value)}
-              >
-                <Star
-                  size={16}
-                  className={value <= minDifficulty ? "fill-amber-500 text-amber-500" : "text-eco-200"}
-                />
-              </button>
-            );
-          })}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-eco-500">Сложность от:</span>
+          <div className="flex gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => {
+              const value = i + 1;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={`От сложности ${value}`}
+                  onClick={() => {
+                    const next = minDifficulty === value ? 1 : value;
+                    onMinDifficultyChange(next);
+                    // нижняя граница не может быть выше верхней — подтягиваем верхнюю вместе с ней
+                    if (next > maxDifficulty) onMaxDifficultyChange(next);
+                  }}
+                >
+                  <Star
+                    size={16}
+                    className={value <= minDifficulty ? "fill-amber-500 text-amber-500" : "text-eco-200"}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-eco-500">до:</span>
+          <div className="flex gap-0.5">
+            {Array.from({ length: 5 }).map((_, i) => {
+              const value = i + 1;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-label={`До сложности ${value}`}
+                  onClick={() => {
+                    const next = maxDifficulty === value ? 5 : value;
+                    onMaxDifficultyChange(next);
+                    // верхняя граница не может быть ниже нижней — подтягиваем нижнюю вместе с ней
+                    if (next < minDifficulty) onMinDifficultyChange(next);
+                  }}
+                >
+                  <Star
+                    size={16}
+                    className={value <= maxDifficulty ? "fill-amber-500 text-amber-500" : "text-eco-200"}
+                  />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

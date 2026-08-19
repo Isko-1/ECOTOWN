@@ -30,6 +30,7 @@ export default function MapPage() {
     new Set(["new", "in_progress", "done"])
   );
   const [minDifficulty, setMinDifficulty] = useState(1);
+  const [maxDifficulty, setMaxDifficulty] = useState(5);
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null);
 
   const loadSpots = useCallback(async () => {
@@ -90,8 +91,11 @@ export default function MapPage() {
   }
 
   const filteredSpots = useMemo(
-    () => spots.filter((s) => statusFilter.has(s.status) && s.difficulty >= minDifficulty),
-    [spots, statusFilter, minDifficulty]
+    () =>
+      spots.filter(
+        (s) => statusFilter.has(s.status) && s.difficulty >= minDifficulty && s.difficulty <= maxDifficulty
+      ),
+    [spots, statusFilter, minDifficulty, maxDifficulty]
   );
 
   function handleLocationFound(lat: number, lng: number) {
@@ -127,6 +131,8 @@ export default function MapPage() {
           onStatusFilterChange={setStatusFilter}
           minDifficulty={minDifficulty}
           onMinDifficultyChange={setMinDifficulty}
+          maxDifficulty={maxDifficulty}
+          onMaxDifficultyChange={setMaxDifficulty}
         />
         <MapSearch onFound={handleLocationFound} />
       </div>

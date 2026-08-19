@@ -9,7 +9,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { SpotChat } from "@/components/SpotChat";
 import { Modal } from "@/components/ui/Modal";
 import { CloseSpotForm } from "@/components/CloseSpotForm";
-import { DonationBlock } from "@/components/DonationBlock";
+import { DonationRequestForm } from "@/components/DonationRequestForm";
+import { DonationProgress } from "@/components/DonationProgress";
+import type { SpotDonation } from "@/lib/types";
 
 const statusLabel: Record<SpotStatus, string> = {
   new: "Новая",
@@ -41,6 +43,10 @@ export function SpotPopup({
   const [chatOpen, setChatOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [volunteers, setVolunteers] = useState<Pick<Profile, "id" | "display_name" | "avatar_url">[]>([]);
+  const [donation, setDonation] = useState<SpotDonation | null>(null);
+  const [kaspiNumber, setKaspiNumber] = useState<string | null>(null);
+  const [commissionPercent, setCommissionPercent] = useState(5);
+  const [myName, setMyName] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +67,49 @@ export function SpotPopup({
     // onChanged меняется на каждый ререндер родителя, поэтому в зависимостях — только spot.id и статус
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spot.id, spot.status]);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => setMyName(data?.display_name ?? ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  useEffect(() => {
+    if (spot.difficulty < 4) return;
+    let cancelled = false;
+
+    supabase
+      .from("spot_donations")
+      .select("*")
+      .eq("spot_id", spot.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setDonation(data ?? null);
+      });
+
+    supabase
+      .from("app_settings")
+      .select("kaspi_number, commission_percent")
+      .eq("id", true)
+      .single()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setKaspiNumber(data?.kaspi_number ?? null);
+        setCommissionPercent(data?.commission_percent ?? 5);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spot.id, spot.difficulty]);
 
   async function joinVolunteers() {
     if (!userId) return;
@@ -125,7 +174,34 @@ export function SpotPopup({
         ))}
       </div>
 
-      {spot.difficulty >= 4 && <DonationBlock />}
+      {spot.difficulty >= 4 && donation && donation.status !== "rejected" && (
+        <DonationProgress donation={donation} kaspiNumber={kaspiNumber} commissionPercent={commissionPercent} />
+      )}
+      {/* Запросить донат может ТОЛЬКО волонтёр, уже взявший метку в работу —
+          автор метки часто не знает, что реально нужно для уборки. RLS на базе это же
+          и проверяет, здесь — просто отражаем то же условие в UI. */}
+      {spot.difficulty >= 4 &&
+        isVolunteer &&
+        userId &&
+        (!donation || donation.status === "rejected") && (
+          <DonationRequestForm
+            spotId={spot.id}
+            spotTitle={spot.title}
+            userId={userId}
+            requesterName={myName}
+            onDone={() => {
+              onChanged();
+              supabase
+                .from("spot_donations")
+                .select("*")
+                .eq("spot_id", spot.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle()
+                .then(({ data }) => setDonation(data ?? null));
+            }}
+          />
+        )}
 
       {(spot.photo_before_url || spot.photo_after_url) && (
         <div className="mt-2 grid grid-cols-2 gap-1">

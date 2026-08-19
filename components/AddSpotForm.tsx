@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Star, HandCoins } from "lucide-react";
+import { Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compressImage";
 import type { SpotStatus } from "@/lib/types";
@@ -40,8 +40,6 @@ export function AddSpotForm({
   const [isPublic, setIsPublic] = useState(true);
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
   const [afterFile, setAfterFile] = useState<File | null>(null);
-  const [wantsDonation, setWantsDonation] = useState(false);
-  const [donationGoal, setDonationGoal] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,33 +53,19 @@ export function AddSpotForm({
         afterFile ? uploadPhoto(afterFile, userId) : Promise.resolve(null),
       ]);
 
-      const { data: inserted, error: insertError } = await supabase
-        .from("spots")
-        .insert({
-          created_by: userId,
-          title,
-          description,
-          lat,
-          lng,
-          status,
-          difficulty,
-          is_public: isPublic,
-          photo_before_url,
-          photo_after_url,
-          donation_goal: wantsDonation ? donationGoal : null,
-        })
-        .select()
-        .single();
+      const { error: insertError } = await supabase.from("spots").insert({
+        created_by: userId,
+        title,
+        description,
+        lat,
+        lng,
+        status,
+        difficulty,
+        is_public: isPublic,
+        photo_before_url,
+        photo_after_url,
+      });
       if (insertError) throw insertError;
-
-      if (wantsDonation && donationGoal.trim()) {
-        // Письмо модератору — ошибка отправки не должна ломать создание метки
-        fetch("/api/donation-request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spotId: inserted.id, spotTitle: title, goal: donationGoal }),
-        }).catch(() => {});
-      }
 
       onCreated();
     } catch (err) {
@@ -141,37 +125,10 @@ export function AddSpotForm({
           ))}
         </div>
         {difficulty >= 4 && (
-          <div className="mt-2 rounded-lg bg-eco-50 p-2">
-            {!wantsDonation ? (
-              <Button type="button" size="sm" variant="secondary" onClick={() => setWantsDonation(true)}>
-                <HandCoins size={14} /> Добавить донат
-              </Button>
-            ) : (
-              <div>
-                <label className="mb-1 block font-medium text-eco-800">На что нужны деньги</label>
-                <Textarea
-                  required
-                  rows={2}
-                  value={donationGoal}
-                  onChange={(e) => setDonationGoal(e.target.value)}
-                  placeholder="Например: перчатки и мешки для мусора, на 5000⁄9000 ₸"
-                />
-                <p className="mt-1 text-[11px] text-eco-500">
-                  После сохранения мы отправим заявку модератору — он подключит номер для перевода, это может занять время.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setWantsDonation(false);
-                    setDonationGoal("");
-                  }}
-                  className="mt-1 text-[11px] text-eco-500 underline"
-                >
-                  Отменить
-                </button>
-              </div>
-            )}
-          </div>
+          <p className="mt-2 text-[11px] leading-snug text-eco-500">
+            Метки высокой сложности можно поддержать донатом — но заявку на него сможет отправить
+            только волонтёр, который возьмёт метку в работу (кнопка появится в карточке метки на карте).
+          </p>
         )}
       </div>
 

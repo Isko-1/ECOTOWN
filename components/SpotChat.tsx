@@ -83,8 +83,13 @@ export function SpotChat({
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/40" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 flex h-[70vh] w-[92vw] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl bg-white shadow-xl focus:outline-none">
+        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/20" />
+        {/*
+          Исправление бага №9: обсуждение больше не всплывает отдельным блоком по центру экрана
+          поверх карты. Это панель, прикреплённая к правому краю (тот же паттерн, что и мобильное
+          меню в Header.tsx) — она не наслаивается на интерфейс произвольно, а выезжает предсказуемо.
+        */}
+        <Dialog.Content className="fixed right-0 top-0 z-50 flex h-full w-full max-w-sm flex-col bg-white shadow-xl focus:outline-none data-[state=open]:animate-in data-[state=open]:slide-in-from-right">
           <div className="flex items-center justify-between border-b border-eco-100 px-4 py-3">
             <Dialog.Title className="font-display text-sm font-semibold text-eco-900">
               Обсуждение: {spotTitle}

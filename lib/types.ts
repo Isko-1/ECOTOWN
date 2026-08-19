@@ -6,6 +6,7 @@ export type Profile = {
   avatar_url: string | null;
   bio: string | null;
   city: string | null;
+  role: "user" | "admin";
   created_at: string;
 };
 
@@ -46,6 +47,36 @@ export type Favorite = {
   user_id: string;
   spot_id: string;
   created_at: string;
+};
+
+export type DonationStatus = "pending" | "approved" | "rejected" | "completed";
+
+export type SpotDonation = {
+  id: string;
+  spot_id: string;
+  requested_by: string;
+  purpose_text: string;
+  goal_amount: number;
+  collected_amount: number;
+  status: DonationStatus;
+  created_at: string;
+  approved_at: string | null;
+};
+
+export type DonationTransaction = {
+  id: string;
+  donation_id: string;
+  amount: number;
+  recorded_by: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type AppSettings = {
+  id: true;
+  kaspi_number: string | null;
+  commission_percent: number;
+  updated_at: string;
 };
 
 export type Database = {
@@ -133,6 +164,45 @@ export type Database = {
             referencedColumns: ["id"];
           }
         ];
+      };
+      spot_donations: {
+        Row: SpotDonation;
+        Insert: Partial<SpotDonation> & {
+          spot_id: string;
+          requested_by: string;
+          purpose_text: string;
+          goal_amount: number;
+        };
+        Update: Partial<SpotDonation>;
+        Relationships: [
+          {
+            foreignKeyName: "spot_donations_spot_id_fkey";
+            columns: ["spot_id"];
+            isOneToOne: false;
+            referencedRelation: "spots";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      donation_transactions: {
+        Row: DonationTransaction;
+        Insert: Partial<DonationTransaction> & { donation_id: string; amount: number };
+        Update: Partial<DonationTransaction>;
+        Relationships: [
+          {
+            foreignKeyName: "donation_transactions_donation_id_fkey";
+            columns: ["donation_id"];
+            isOneToOne: false;
+            referencedRelation: "spot_donations";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      app_settings: {
+        Row: AppSettings;
+        Insert: Partial<AppSettings>;
+        Update: Partial<AppSettings>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

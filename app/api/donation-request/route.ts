@@ -1,19 +1,21 @@
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
-  const { spotId, spotTitle, goal, creatorName } = await request.json();
+  const { spotId, spotTitle, purpose, goalAmount, requesterName } = await request.json();
 
-  if (!spotId || !spotTitle || !goal) {
-    return NextResponse.json({ error: "Не хватает данных о метке" }, { status: 400 });
+  if (!spotId || !spotTitle || !purpose || !goalAmount) {
+    return NextResponse.json({ error: "Не хватает данных о заявке" }, { status: 400 });
   }
 
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.CONTACT_EMAIL;
 
   if (!apiKey || !to) {
-    // Не мешаем создать метку, если письмо не настроено — просто не отправляем
+    // Не мешаем отправить заявку, если письмо не настроено — просто не отправляем
     return NextResponse.json({ ok: true, warning: "email не настроен" });
   }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -27,12 +29,13 @@ export async function POST(request: Request) {
       subject: `EcoTown — заявка на донат: «${spotTitle}»`,
       text: [
         `Метка: ${spotTitle} (id: ${spotId})`,
-        `Автор: ${creatorName ?? "неизвестно"}`,
+        `Волонтёр: ${requesterName || "не указано"}`,
+        `Сумма: ${goalAmount} ₸`,
         "",
-        "Цель доната:",
-        goal,
+        "На что нужны деньги:",
+        purpose,
         "",
-        "Чтобы подключить приём донатов — впиши свой Kaspi-номер в колонку donation_kaspi_number этой строки в таблице spots (Supabase Table Editor).",
+        `Одобрить/отклонить и внести поступления: ${siteUrl}/admin`,
       ].join("\n"),
     }),
   });
