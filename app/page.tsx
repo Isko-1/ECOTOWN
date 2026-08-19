@@ -2,6 +2,7 @@ import Link from "next/link";
 import { MapPin, Users, ImageIcon, UserPlus, PenLine, HandHeart, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ContactForm } from "@/components/ContactForm";
+import { StatsSection } from "@/components/StatsSection";
 
 const pillars = [
   {
@@ -65,6 +66,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Статистика */}
+      <StatsSection />
 
       {/* Как это работает */}
       <section className="py-16">

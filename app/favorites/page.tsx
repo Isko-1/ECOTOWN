@@ -21,9 +21,11 @@ export default async function FavoritesPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const favoriteSpots: Spot[] = (data ?? [])
-    .map((row) => row.spots as unknown as Spot)
-    .filter(Boolean);
+  type FavoriteRow = { spot_id: string; spots: Spot | null };
+
+  const favoriteSpots: Spot[] = ((data ?? []) as unknown as FavoriteRow[])
+    .map((row) => row.spots)
+    .filter((spot): spot is Spot => spot !== null);
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">

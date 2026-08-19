@@ -1,13 +1,13 @@
 export type SpotStatus = "new" | "in_progress" | "done";
 
-export interface Profile {
+export type Profile = {
   id: string;
   display_name: string;
   avatar_url: string | null;
   created_at: string;
-}
+};
 
-export interface Spot {
+export type Spot = {
   id: string;
   created_by: string | null;
   title: string;
@@ -21,40 +21,116 @@ export interface Spot {
   photo_after_url: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface SpotVolunteer {
+export type SpotVolunteer = {
   spot_id: string;
   user_id: string;
   joined_at: string;
-}
+};
 
-export interface SpotMessage {
+export type SpotMessage = {
   id: string;
   spot_id: string;
   user_id: string | null;
   message: string;
   created_at: string;
-}
+};
 
-export interface Favorite {
+export type Favorite = {
   user_id: string;
   spot_id: string;
   created_at: string;
-}
+};
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
-      profiles: { Row: Profile; Insert: Partial<Profile> & { id: string; display_name: string }; Update: Partial<Profile> };
+      profiles: {
+        Row: Profile;
+        Insert: Partial<Profile> & { id: string; display_name: string };
+        Update: Partial<Profile>;
+        Relationships: [];
+      };
       spots: {
         Row: Spot;
         Insert: Partial<Spot> & { title: string; description: string; lat: number; lng: number; difficulty: number };
         Update: Partial<Spot>;
+        Relationships: [
+          {
+            foreignKeyName: "spots_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
       };
-      spot_volunteers: { Row: SpotVolunteer; Insert: SpotVolunteer; Update: Partial<SpotVolunteer> };
-      spot_messages: { Row: SpotMessage; Insert: Partial<SpotMessage> & { spot_id: string; message: string }; Update: Partial<SpotMessage> };
-      favorites: { Row: Favorite; Insert: Favorite; Update: Partial<Favorite> };
+      spot_volunteers: {
+        Row: SpotVolunteer;
+        Insert: Partial<SpotVolunteer> & { spot_id: string; user_id: string };
+        Update: Partial<SpotVolunteer>;
+        Relationships: [
+          {
+            foreignKeyName: "spot_volunteers_spot_id_fkey";
+            columns: ["spot_id"];
+            isOneToOne: false;
+            referencedRelation: "spots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "spot_volunteers_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      spot_messages: {
+        Row: SpotMessage;
+        Insert: Partial<SpotMessage> & { spot_id: string; message: string };
+        Update: Partial<SpotMessage>;
+        Relationships: [
+          {
+            foreignKeyName: "spot_messages_spot_id_fkey";
+            columns: ["spot_id"];
+            isOneToOne: false;
+            referencedRelation: "spots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "spot_messages_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      favorites: {
+        Row: Favorite;
+        Insert: Partial<Favorite> & { spot_id: string; user_id: string };
+        Update: Partial<Favorite>;
+        Relationships: [
+          {
+            foreignKeyName: "favorites_spot_id_fkey";
+            columns: ["spot_id"];
+            isOneToOne: false;
+            referencedRelation: "spots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "favorites_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
-}
+};
