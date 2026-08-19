@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/compressImage";
 import type { SpotStatus } from "@/lib/types";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
@@ -10,8 +11,9 @@ import { Button } from "@/components/ui/Button";
 
 async function uploadPhoto(file: File, userId: string) {
   const supabase = createClient();
-  const path = `${userId}/${Date.now()}-${file.name}`;
-  const { error } = await supabase.storage.from("spot-photos").upload(path, file);
+  const compressed = await compressImage(file);
+  const path = `${userId}/${Date.now()}-${compressed.name}`;
+  const { error } = await supabase.storage.from("spot-photos").upload(path, compressed);
   if (error) throw error;
   return supabase.storage.from("spot-photos").getPublicUrl(path).data.publicUrl;
 }

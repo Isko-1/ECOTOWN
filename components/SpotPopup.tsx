@@ -5,6 +5,7 @@ import { Star, Heart, HandHeart, MessageCircle, Users, LogOut, CheckCircle2 } fr
 import type { Spot, SpotStatus, Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { SpotChat } from "@/components/SpotChat";
 import { Modal } from "@/components/ui/Modal";
 import { CloseSpotForm } from "@/components/CloseSpotForm";
@@ -38,18 +39,18 @@ export function SpotPopup({
   const [busy, setBusy] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
-  const [volunteers, setVolunteers] = useState<Pick<Profile, "id" | "display_name">[]>([]);
+  const [volunteers, setVolunteers] = useState<Pick<Profile, "id" | "display_name" | "avatar_url">[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     supabase
       .from("spot_volunteers")
-      .select("profiles(id, display_name)")
+      .select("profiles(id, display_name, avatar_url)")
       .eq("spot_id", spot.id)
       .then(({ data }) => {
         if (cancelled) return;
         const rows = (data ?? [])
-          .map((r) => r.profiles as unknown as Pick<Profile, "id" | "display_name">)
+          .map((r) => r.profiles as unknown as Pick<Profile, "id" | "display_name" | "avatar_url">)
           .filter(Boolean);
         setVolunteers(rows);
       });
@@ -154,9 +155,7 @@ export function SpotPopup({
                 key={v.id}
                 className="flex items-center gap-1 rounded-full bg-eco-50 px-2 py-0.5 text-xs text-eco-800"
               >
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-eco-200 text-[9px] font-semibold text-eco-800">
-                  {v.display_name.slice(0, 1).toUpperCase()}
-                </span>
+                <Avatar displayName={v.display_name} avatarUrl={v.avatar_url} size="sm" className="h-4 w-4 text-[9px]" />
                 {v.display_name}
               </li>
             ))}

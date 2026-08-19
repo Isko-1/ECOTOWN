@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, Leaf, User as UserIcon, LogOut } from "lucide-react";
+import { Menu, Leaf, LogOut } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { Sheet } from "@/components/ui/Sheet";
 import { createClient } from "@/lib/supabase/client";
+import type { Profile } from "@/lib/types";
 
 const links = [
   { href: "/", label: "Главная" },
@@ -18,6 +20,7 @@ const links = [
 export function Header() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Pick<Profile, "display_name" | "avatar_url"> | null>(null);
   const [supabase] = useState(() => createClient());
   const router = useRouter();
 
@@ -30,6 +33,19 @@ export function Header() {
 
     return () => subscription.subscription.unsubscribe();
   }, [supabase]);
+
+  useEffect(() => {
+    if (!user) {
+      setProfile(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => setProfile(data));
+  }, [user, supabase]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -58,11 +74,13 @@ export function Header() {
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
             <>
-              <Link href="/favorites">
-                <Button variant="ghost" size="sm">
-                  <UserIcon size={16} />
-                  Личный кабинет
-                </Button>
+              <Link href="/profile" className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-eco-800 hover:bg-eco-50">
+                <Avatar
+                  displayName={profile?.display_name ?? user.email ?? "?"}
+                  avatarUrl={profile?.avatar_url ?? null}
+                  size="sm"
+                />
+                {profile?.display_name ?? "Профиль"}
               </Link>
               <Button variant="secondary" size="sm" onClick={handleLogout}>
                 <LogOut size={16} />
@@ -105,10 +123,14 @@ export function Header() {
         <div className="mt-4 flex flex-col gap-2 border-t border-eco-100 pt-4">
           {user ? (
             <>
-              <Link href="/favorites" onClick={() => setOpen(false)}>
+              <Link href="/profile" onClick={() => setOpen(false)}>
                 <Button variant="secondary" className="w-full">
-                  <UserIcon size={16} />
-                  Личный кабинет
+                  <Avatar
+                    displayName={profile?.display_name ?? user.email ?? "?"}
+                    avatarUrl={profile?.avatar_url ?? null}
+                    size="sm"
+                  />
+                  {profile?.display_name ?? "Профиль"}
                 </Button>
               </Link>
               <Button variant="primary" className="w-full" onClick={handleLogout}>
