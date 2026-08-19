@@ -24,6 +24,8 @@ export type Spot = {
   created_at: string;
   updated_at: string;
   closed_at: string | null;
+  donation_goal: string | null;
+  donation_kaspi_number: string | null;
 };
 
 export type SpotVolunteer = {

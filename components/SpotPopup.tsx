@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { SpotChat } from "@/components/SpotChat";
 import { Modal } from "@/components/ui/Modal";
 import { CloseSpotForm } from "@/components/CloseSpotForm";
+import { DonationBlock } from "@/components/DonationBlock";
 
 const statusLabel: Record<SpotStatus, string> = {
   new: "Новая",
@@ -124,11 +125,7 @@ export function SpotPopup({
         ))}
       </div>
 
-      {spot.difficulty >= 4 && (
-        <p className="mt-2 rounded-lg bg-eco-50 px-2 py-1.5 text-xs text-eco-800">
-          Сложная уборка — можно поддержать донатом на Kaspi.
-        </p>
-      )}
+      {spot.difficulty >= 4 && <DonationBlock />}
 
       {(spot.photo_before_url || spot.photo_after_url) && (
         <div className="mt-2 grid grid-cols-2 gap-1">
