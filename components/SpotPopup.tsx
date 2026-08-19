@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Star, Heart, HandHeart } from "lucide-react";
-import type { Spot, SpotStatus } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { Star, Heart, HandHeart, MessageCircle, Users, LogOut, CheckCircle2 } from "lucide-react";
+import type { Spot, SpotStatus, Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
+import { SpotChat } from "@/components/SpotChat";
+import { Modal } from "@/components/ui/Modal";
+import { CloseSpotForm } from "@/components/CloseSpotForm";
 
 const statusLabel: Record<SpotStatus, string> = {
   new: "Новая",
@@ -22,21 +25,67 @@ export function SpotPopup({
   spot,
   userId,
   isFavorite,
+  isVolunteer,
   onChanged,
 }: {
   spot: Spot;
   userId: string | null;
   isFavorite: boolean;
+  isVolunteer: boolean;
   onChanged: () => void;
 }) {
   const supabase = createClient();
   const [busy, setBusy] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const [volunteers, setVolunteers] = useState<Pick<Profile, "id" | "display_name">[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase
+      .from("spot_volunteers")
+      .select("profiles(id, display_name)")
+      .eq("spot_id", spot.id)
+      .then(({ data }) => {
+        if (cancelled) return;
+        const rows = (data ?? [])
+          .map((r) => r.profiles as unknown as Pick<Profile, "id" | "display_name">)
+          .filter(Boolean);
+        setVolunteers(rows);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // onChanged меняется на каждый ререндер родителя, поэтому в зависимостях — только spot.id и статус
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spot.id, spot.status]);
 
   async function joinVolunteers() {
     if (!userId) return;
     setBusy(true);
     await supabase.from("spot_volunteers").insert({ spot_id: spot.id, user_id: userId });
     await supabase.from("spots").update({ status: "in_progress" }).eq("id", spot.id);
+    setBusy(false);
+    onChanged();
+  }
+
+  async function leaveVolunteers() {
+    if (!userId) return;
+    setBusy(true);
+
+    // Считаем участников ДО удаления, чтобы понять, останется ли кто-то ещё
+    const { count } = await supabase
+      .from("spot_volunteers")
+      .select("*", { count: "exact", head: true })
+      .eq("spot_id", spot.id);
+
+    // Если уходящий — последний, статус меняем, пока RLS ещё считает нас волонтёром
+    if (count === 1) {
+      await supabase.from("spots").update({ status: "new" }).eq("id", spot.id);
+    }
+
+    await supabase.from("spot_volunteers").delete().eq("spot_id", spot.id).eq("user_id", userId);
+
     setBusy(false);
     onChanged();
   }
@@ -93,18 +142,79 @@ export function SpotPopup({
         </div>
       )}
 
+      {/* Этап 2: волонтёры на метке */}
+      {volunteers.length > 0 && (
+        <div className="mt-3 border-t border-eco-100 pt-2">
+          <p className="flex items-center gap-1 text-xs font-medium text-eco-600">
+            <Users size={13} /> В работе: {volunteers.length} чел.
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-1">
+            {volunteers.map((v) => (
+              <li
+                key={v.id}
+                className="flex items-center gap-1 rounded-full bg-eco-50 px-2 py-0.5 text-xs text-eco-800"
+              >
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-eco-200 text-[9px] font-semibold text-eco-800">
+                  {v.display_name.slice(0, 1).toUpperCase()}
+                </span>
+                {v.display_name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {userId && (
-        <div className="mt-3 flex gap-2">
-          {spot.status === "new" && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {spot.status !== "done" && !isVolunteer && (
             <Button size="sm" variant="primary" disabled={busy} onClick={joinVolunteers}>
               <HandHeart size={14} /> Взять в работу
             </Button>
           )}
+
+          {isVolunteer && spot.status === "in_progress" && (
+            <>
+              <Button size="sm" variant="secondary" disabled={busy} onClick={leaveVolunteers}>
+                <LogOut size={14} /> Отказаться
+              </Button>
+              <Button size="sm" variant="primary" disabled={busy} onClick={() => setCloseOpen(true)}>
+                <CheckCircle2 size={14} /> Закрыть метку
+              </Button>
+            </>
+          )}
+
           <Button size="sm" variant="secondary" disabled={busy} onClick={toggleFavorite}>
             <Heart size={14} className={isFavorite ? "fill-eco-700" : ""} />
             {isFavorite ? "В избранном" : "В избранное"}
           </Button>
         </div>
+      )}
+
+      <Button size="sm" variant="ghost" className="mt-2 w-full" onClick={() => setChatOpen(true)}>
+        <MessageCircle size={14} />
+        Обсуждение
+      </Button>
+
+      <SpotChat
+        spotId={spot.id}
+        spotTitle={spot.title}
+        userId={userId}
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+      />
+
+      {userId && (
+        <Modal open={closeOpen} onOpenChange={setCloseOpen} title="Закрыть метку">
+          <CloseSpotForm
+            spotId={spot.id}
+            userId={userId}
+            onDone={() => {
+              setCloseOpen(false);
+              onChanged();
+            }}
+            onCancel={() => setCloseOpen(false)}
+          />
+        </Modal>
       )}
     </div>
   );

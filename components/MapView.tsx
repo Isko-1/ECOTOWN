@@ -1,10 +1,17 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
+import { useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
 import type { Spot } from "@/lib/types";
 import { spotIcon, pendingSpotIcon } from "@/components/SpotMarker";
 import { SpotPopup } from "@/components/SpotPopup";
+
+export interface FlyToTarget {
+  lat: number;
+  lng: number;
+  nonce: number;
+}
 
 const URALSK_CENTER: [number, number] = [51.2333, 51.3667];
 
@@ -20,20 +27,34 @@ function ClickCatcher({ onPick }: { onPick: (lat: number, lng: number) => void }
   return null;
 }
 
+// nonce нужен, чтобы повторный поиск того же места тоже вызывал перелёт
+function FlyTo({ target }: { target: FlyToTarget | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) map.flyTo([target.lat, target.lng], 16);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.nonce]);
+  return null;
+}
+
 export function MapView({
   spots,
   userId,
   favoriteSpotIds,
+  myVolunteerSpotIds,
   pickMode,
   pendingPosition,
+  flyToTarget,
   onPick,
   onChanged,
 }: {
   spots: Spot[];
   userId: string | null;
   favoriteSpotIds: Set<string>;
+  myVolunteerSpotIds: Set<string>;
   pickMode: boolean;
   pendingPosition: { lat: number; lng: number } | null;
+  flyToTarget: FlyToTarget | null;
   onPick: (lat: number, lng: number) => void;
   onChanged: () => void;
 }) {
@@ -42,6 +63,7 @@ export function MapView({
       <TileLayer url={CARTO_TILE_URL} attribution={CARTO_ATTRIBUTION} />
 
       {pickMode && <ClickCatcher onPick={onPick} />}
+      <FlyTo target={flyToTarget} />
 
       {/* Рендерим маркер на каждую строку из spots — без скрытых фильтров (исправление бага №4) */}
       {spots.map((spot) => (
@@ -51,6 +73,7 @@ export function MapView({
               spot={spot}
               userId={userId}
               isFavorite={favoriteSpotIds.has(spot.id)}
+              isVolunteer={myVolunteerSpotIds.has(spot.id)}
               onChanged={onChanged}
             />
           </Popup>

@@ -3,6 +3,7 @@ import { MapPin, Users, ImageIcon, UserPlus, PenLine, HandHeart, CheckCircle2 } 
 import { Button } from "@/components/ui/Button";
 import { ContactForm } from "@/components/ContactForm";
 import { StatsSection } from "@/components/StatsSection";
+import { createClient } from "@/lib/supabase/server";
 
 const pillars = [
   {
@@ -29,7 +30,12 @@ const steps = [
   { icon: CheckCircle2, title: "Закрой метку", text: "Загрузи фото до/после — метка получит статус «Закрыто»." },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <main>
       {/* Hero */}
@@ -45,7 +51,11 @@ export default function HomePage() {
             EcoTown — это карта, на которую жители отмечают загрязнённые места, а волонтёры берут их в работу и закрывают, подтверждая уборку фото до/после.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/register"><Button size="lg">Зарегистрироваться</Button></Link>
+            {user ? (
+              <Link href="/favorites"><Button size="lg">Личный кабинет</Button></Link>
+            ) : (
+              <Link href="/register"><Button size="lg">Зарегистрироваться</Button></Link>
+            )}
             <Link href="/map"><Button size="lg" variant="secondary">Открыть карту</Button></Link>
           </div>
         </div>
@@ -93,13 +103,21 @@ export default function HomePage() {
           <div>
             <h2 className="font-display text-2xl font-bold md:text-3xl">Готов сделать город чище?</h2>
             <p className="mt-2 max-w-md text-eco-100">
-              Присоединяйся к волонтёрам EcoTown или поддержи сложные уборки донатом.
+              {user
+                ? "Открой карту и возьми метку в работу — или поддержи сложные уборки донатом."
+                : "Присоединяйся к волонтёрам EcoTown или поддержи сложные уборки донатом."}
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/register">
-              <Button size="lg" className="bg-white text-eco-900 hover:bg-eco-50">Присоединиться</Button>
-            </Link>
+            {user ? (
+              <Link href="/favorites">
+                <Button size="lg" className="bg-white text-eco-900 hover:bg-eco-50">Личный кабинет</Button>
+              </Link>
+            ) : (
+              <Link href="/register">
+                <Button size="lg" className="bg-white text-eco-900 hover:bg-eco-50">Присоединиться</Button>
+              </Link>
+            )}
             <Link href="/map">
               <Button size="lg" variant="ghost" className="border border-white/30 text-white hover:bg-white/10">
                 Посмотреть карту
