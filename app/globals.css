@@ -15,3 +15,15 @@ body {
 .leaflet-container {
   font-family: var(--font-body), sans-serif;
 }
+
+/* Убираем стандартный Leaflet popup — теперь используем sidebar вместо него */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  display: none;
+}
+
+/* Cursor на маркерах в режиме просмотра */
+.leaflet-marker-icon {
+  cursor: pointer;
+}
+

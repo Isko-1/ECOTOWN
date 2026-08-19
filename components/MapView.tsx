@@ -2,10 +2,9 @@
 
 import "leaflet/dist/leaflet.css";
 import { useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import type { Spot } from "@/lib/types";
 import { spotIcon, pendingSpotIcon } from "@/components/SpotMarker";
-import { SpotPopup } from "@/components/SpotPopup";
 
 export interface FlyToTarget {
   lat: number;
@@ -39,24 +38,19 @@ function FlyTo({ target }: { target: FlyToTarget | null }) {
 
 export function MapView({
   spots,
-  userId,
-  favoriteSpotIds,
-  myVolunteerSpotIds,
   pickMode,
   pendingPosition,
   flyToTarget,
   onPick,
-  onChanged,
+  onSpotClick,
 }: {
   spots: Spot[];
-  userId: string | null;
-  favoriteSpotIds: Set<string>;
-  myVolunteerSpotIds: Set<string>;
   pickMode: boolean;
   pendingPosition: { lat: number; lng: number } | null;
   flyToTarget: FlyToTarget | null;
   onPick: (lat: number, lng: number) => void;
-  onChanged: () => void;
+  // Новый пропс: вместо рендеринга Popup внутри карты — сигнализируем родителю о выборе метки
+  onSpotClick: (spot: Spot) => void;
 }) {
   return (
     <MapContainer center={URALSK_CENTER} zoom={13} className="h-full w-full" scrollWheelZoom>
@@ -65,19 +59,18 @@ export function MapView({
       {pickMode && <ClickCatcher onPick={onPick} />}
       <FlyTo target={flyToTarget} />
 
-      {/* Рендерим маркер на каждую строку из spots — без скрытых фильтров (исправление бага №4) */}
+      {/* При клике на маркер — открываем sidebar через onSpotClick (не Leaflet Popup) */}
       {spots.map((spot) => (
-        <Marker key={spot.id} position={[spot.lat, spot.lng]} icon={spotIcon(spot.status)}>
-          <Popup minWidth={260}>
-            <SpotPopup
-              spot={spot}
-              userId={userId}
-              isFavorite={favoriteSpotIds.has(spot.id)}
-              isVolunteer={myVolunteerSpotIds.has(spot.id)}
-              onChanged={onChanged}
-            />
-          </Popup>
-        </Marker>
+        <Marker
+          key={spot.id}
+          position={[spot.lat, spot.lng]}
+          icon={spotIcon(spot.status)}
+          eventHandlers={{
+            click: () => {
+              if (!pickMode) onSpotClick(spot);
+            },
+          }}
+        />
       ))}
 
       {pendingPosition && (

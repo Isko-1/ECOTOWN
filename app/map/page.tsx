@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { AddSpotForm } from "@/components/AddSpotForm";
 import { MapFilters } from "@/components/MapFilters";
 import { MapSearch } from "@/components/MapSearch";
+import { SpotSidebar } from "@/components/SpotSidebar";
 import type { FlyToTarget } from "@/components/MapView";
 
 // Leaflet трогает window — грузим карту только на клиенте
@@ -33,10 +34,23 @@ export default function MapPage() {
   const [maxDifficulty, setMaxDifficulty] = useState(5);
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null);
 
+  // ── Sidebar state ──────────────────────────────────────────────────────────
+  // selectedSpot — метка, выбранная кликом на маркер
+  const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // ── Загрузка данных ────────────────────────────────────────────────────────
+
   const loadSpots = useCallback(async () => {
-    // Без .eq()-фильтров по умолчанию — рендерим маркер на каждую строку (исправление бага №4)
     const { data } = await supabase.from("spots").select("*").order("created_at", { ascending: false });
-    setSpots(data ?? []);
+    const fresh = data ?? [];
+    setSpots(fresh);
+
+    // Если sidebar открыт — обновляем данные выбранной метки (статус мог измениться)
+    setSelectedSpot((prev) => {
+      if (!prev) return null;
+      return fresh.find((s) => s.id === prev.id) ?? prev;
+    });
   }, [supabase]);
 
   const loadFavorites = useCallback(
@@ -90,6 +104,19 @@ export default function MapPage() {
     handleChanged();
   }
 
+  // ── Открытие sidebar при клике на маркер ──────────────────────────────────
+  function handleSpotClick(spot: Spot) {
+    setSelectedSpot(spot);
+    setSidebarOpen(true);
+  }
+
+  function handleSidebarClose() {
+    setSidebarOpen(false);
+    // Небольшая задержка, чтобы анимация закрытия успела сыграть
+    setTimeout(() => setSelectedSpot(null), 300);
+  }
+
+  // ── Фильтрация меток ───────────────────────────────────────────────────────
   const filteredSpots = useMemo(
     () =>
       spots.filter(
@@ -104,6 +131,7 @@ export default function MapPage() {
 
   return (
     <main className="flex h-[calc(100vh-4rem)] flex-col">
+      {/* ── Шапка страницы ── */}
       <div className="flex items-center justify-between border-b border-eco-100 px-4 py-3">
         <div>
           <h1 className="font-display text-lg font-semibold text-eco-900">Карта волонтёров</h1>
@@ -125,6 +153,7 @@ export default function MapPage() {
         )}
       </div>
 
+      {/* ── Фильтры и поиск ── */}
       <div className="flex flex-col gap-2 border-b border-eco-100 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
         <MapFilters
           statusFilter={statusFilter}
@@ -137,19 +166,18 @@ export default function MapPage() {
         <MapSearch onFound={handleLocationFound} />
       </div>
 
+      {/* ── Карта + sidebar ── */}
       <div className="relative flex-1">
         <MapView
           spots={filteredSpots}
-          userId={userId}
-          favoriteSpotIds={favoriteSpotIds}
-          myVolunteerSpotIds={myVolunteerSpotIds}
           pickMode={picking}
           pendingPosition={pendingPosition}
           flyToTarget={flyToTarget}
           onPick={handlePick}
-          onChanged={handleChanged}
+          onSpotClick={handleSpotClick}
         />
 
+        {/* Подсказка при выборе места */}
         {picking && !pendingPosition && (
           <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
             <span className="rounded-full bg-eco-800/90 px-3 py-1.5 text-xs text-white">
@@ -158,6 +186,7 @@ export default function MapPage() {
           </div>
         )}
 
+        {/* Форма добавления метки */}
         {pendingPosition && userId && (
           <div className="absolute right-3 top-3 z-[1000] max-h-[calc(100%-1.5rem)] overflow-y-auto rounded-2xl border border-eco-100 bg-white p-4 shadow-xl">
             <AddSpotForm
@@ -169,6 +198,17 @@ export default function MapPage() {
             />
           </div>
         )}
+
+        {/* ── SpotSidebar — главный компонент просмотра метки ── */}
+        <SpotSidebar
+          spot={selectedSpot}
+          userId={userId}
+          isFavorite={selectedSpot ? favoriteSpotIds.has(selectedSpot.id) : false}
+          isVolunteer={selectedSpot ? myVolunteerSpotIds.has(selectedSpot.id) : false}
+          open={sidebarOpen}
+          onClose={handleSidebarClose}
+          onChanged={handleChanged}
+        />
       </div>
     </main>
   );
