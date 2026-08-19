@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Heart, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/Button";
+import { LogoutButton } from "@/components/LogoutButton";
 import type { Spot } from "@/lib/types";
 
 export default async function FavoritesPage() {
@@ -13,6 +14,12 @@ export default async function FavoritesPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, avatar_url")
+    .eq("id", user.id)
+    .single();
 
   // join favorites -> spots, только записи текущего пользователя
   const { data } = await supabase
@@ -29,7 +36,32 @@ export default async function FavoritesPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
-      <h1 className="font-display text-2xl font-bold text-eco-900">Избранное</h1>
+      {/* Личный кабинет */}
+      <section className="flex items-center justify-between gap-4 rounded-2xl border border-eco-100 bg-eco-50/50 p-5">
+        <div className="flex items-center gap-4">
+          {profile?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.avatar_url}
+              alt=""
+              className="h-14 w-14 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-eco-600 font-display text-xl font-bold text-white">
+              {(profile?.display_name ?? user.email ?? "?").charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <p className="font-display text-lg font-semibold text-eco-900">
+              {profile?.display_name ?? "Без имени"}
+            </p>
+            <p className="text-sm text-eco-600">{user.email}</p>
+          </div>
+        </div>
+        <LogoutButton />
+      </section>
+
+      <h1 className="mt-10 font-display text-2xl font-bold text-eco-900">Избранное</h1>
 
       {favoriteSpots.length === 0 ? (
         <div className="mt-16 flex flex-col items-center gap-3 text-center">
