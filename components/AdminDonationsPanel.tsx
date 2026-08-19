@@ -16,7 +16,6 @@ interface AdminDonationsPanelProps {
 export function AdminDonationsPanel({
   pending,
   active,
-  settings,
 }: AdminDonationsPanelProps) {
   return (
     <div className="mt-6 space-y-6">
@@ -28,16 +27,23 @@ export function AdminDonationsPanel({
           <p className="mt-2 text-sm text-gray-500">Нет новых заявок.</p>
         ) : (
           <ul className="mt-2 divide-y">
-            {pending.map((item) => (
-              <li key={item.id} className="py-2">
-                <p className="text-sm font-medium">
-                  {item.spots?.title ?? "Метка без названия"} — {item.amount} ₸
-                </p>
-                <p className="text-xs text-gray-500">
-                  От: {item.profiles?.display_name ?? "Аноним"}
-                </p>
-              </li>
-            ))}
+            {pending.map((item) => {
+              // Безопасное извлечение суммы, если поле имеет другое имя в типе
+              const itemData = item as Record<string, unknown>;
+              const amount = itemData.amount ?? itemData.target_amount ?? null;
+
+              return (
+                <li key={item.id} className="py-2">
+                  <p className="text-sm font-medium">
+                    {item.spots?.title ?? "Метка без названия"}
+                    {amount !== null ? ` — ${amount} ₸` : ""}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    От: {item.profiles?.display_name ?? "Аноним"}
+                  </p>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
