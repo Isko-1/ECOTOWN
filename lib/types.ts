@@ -215,6 +215,26 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      admin_list_users: {
+        Args: Record<string, never>;
+        Returns: AdminUserRow[];
+      };
+      admin_set_user_role: {
+        Args: { target_user_id: string; new_role: "user" | "moderator" | "admin" };
+        Returns: void;
+      };
+      admin_dashboard_stats: {
+        Args: Record<string, never>;
+        Returns: {
+          avg_response_seconds: number | null;
+          avg_mttr_seconds: number | null;
+          total_volunteers: number;
+          repeat_volunteers: number;
+          dau: number;
+          mau: number;
+        };
+      };
+    };
   };
 };

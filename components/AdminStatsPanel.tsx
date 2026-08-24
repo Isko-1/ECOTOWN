@@ -1,15 +1,6 @@
 import { Clock, Timer, Repeat, Activity } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
-type DashboardStats = {
-  avg_response_seconds: number | null;
-  avg_mttr_seconds: number | null;
-  total_volunteers: number;
-  repeat_volunteers: number;
-  dau: number;
-  mau: number;
-};
-
 function formatDuration(seconds: number | null) {
   if (seconds === null) return "—";
   const hours = seconds / 3600;
@@ -18,7 +9,8 @@ function formatDuration(seconds: number | null) {
 }
 
 /**
- * Статистика для админки: воронка конверсии, скорость обработки, вовлечённость.
+ * Статистика для админки: скорость обработки и вовлечённость — вещи, которые
+ * не показываются публично (воронка конверсии — на главной странице, см. StatsSection.tsx).
  * Данные считаются одним SQL-вызовом на сервере (см. admin_dashboard_stats() в
  * supabase/migrations/0009_admin_dashboard_stats.sql) — здесь только форматирование.
  */
@@ -30,7 +22,7 @@ export async function AdminStatsPanel() {
     return <p className="text-sm text-red-600">Не удалось загрузить статистику.</p>;
   }
 
-  const s = data as unknown as DashboardStats;
+  const s = data;
   const retention = s.total_volunteers > 0 ? Math.round((s.repeat_volunteers / s.total_volunteers) * 100) : 0;
 
   return (
