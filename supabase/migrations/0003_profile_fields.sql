@@ -1,3 +1,2 @@
--- Расширяем профиль волонтёра: био и город для страницы /profile
-alter table profiles add column bio text;
-alter table profiles add column city text;
+-- Переименовано в 0003a_profile_fields.sql — оставлен как no-op, чтобы избежать
+-- коллизии номеров (было два файла 0003_*) и не сломать повторное применение схемы.

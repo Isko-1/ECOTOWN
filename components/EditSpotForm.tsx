@@ -197,8 +197,7 @@ export function EditSpotForm({
         <Info size={15} className="mt-0.5 shrink-0 text-blue-500" />
         <p className="text-xs leading-relaxed text-blue-700">
           Изменения сохраняются на карте сразу. Уведомление о новых метках и запросах на донат
-          поступает администратору на почту{" "}
-          <strong>iskair12@gmail.com</strong>.
+          поступает администратору.
         </p>
       </div>
 

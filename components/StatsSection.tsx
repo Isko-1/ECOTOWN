@@ -1,4 +1,4 @@
-import { MapPin, Wallet, Users, Sparkles, ArrowRight, ArrowDown } from "lucide-react";
+import { MapPin, Wallet, Users, Sparkles, PenLine, HandHeart, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -39,9 +39,9 @@ export async function StatsSection() {
   ];
 
   const funnel = [
-    { label: "Создано", value: total, percent: 100 },
-    { label: "Взято в работу", value: takenCount, percent: takenPercent },
-    { label: "Закрыто", value: doneCount, percent: donePercent },
+    { icon: PenLine, label: "Создано", value: total, percent: 100, color: "eco" as const },
+    { icon: HandHeart, label: "Взято в работу", value: takenCount, percent: takenPercent, color: "amber" as const },
+    { icon: CheckCircle2, label: "Закрыто", value: doneCount, percent: donePercent, color: "eco" as const },
   ];
 
   return (
@@ -61,30 +61,34 @@ export async function StatsSection() {
         </div>
 
         {/* Воронка: путь метки от создания до закрытия */}
-        <div className="mt-10 rounded-2xl border border-eco-100 bg-eco-50/50 p-6 md:p-8">
+        <div className="mt-10 rounded-2xl border border-eco-100 bg-white p-6 md:p-10">
           <h3 className="font-display text-base font-semibold text-eco-900">Путь метки от создания до закрытия</h3>
-          <div className="mt-6 flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-0">
-            {funnel.map((step, i) => (
-              <div key={step.label} className="flex flex-1 items-center md:items-stretch">
-                <div className="flex-1 rounded-xl border border-eco-100 bg-white p-5 text-center shadow-sm">
-                  <p className="font-display text-3xl font-bold text-eco-900">{step.value}</p>
-                  <p className="mt-1 text-sm text-eco-700">{step.label}</p>
-                  <div className="mx-auto mt-3 h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-eco-100">
-                    <div className="h-full rounded-full bg-eco-600" style={{ width: `${step.percent}%` }} />
-                  </div>
-                  <p className="mt-1 text-xs text-eco-500">{step.percent}%</p>
-                </div>
 
-                {i < funnel.length - 1 && (
-                  <>
-                    <ArrowRight className="mx-3 hidden shrink-0 text-eco-300 md:block" size={22} />
-                    <div className="flex justify-center py-1 md:hidden">
-                      <ArrowDown className="text-eco-300" size={20} />
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+          <div className="relative mt-10 grid grid-cols-3 gap-3 sm:gap-6">
+            {/* Соединительная линия за иконками — рисуется один раз под всей строкой */}
+            <div className="pointer-events-none absolute left-[16.6%] right-[16.6%] top-7 h-0.5 bg-eco-100" />
+
+            {funnel.map((step) => {
+              const iconBg = step.color === "amber" ? "bg-amber-500" : "bg-eco-600";
+              const barColor = step.color === "amber" ? "bg-amber-500" : "bg-eco-600";
+              return (
+                <div key={step.label} className="relative flex flex-col items-center text-center">
+                  <div className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-full ${iconBg} text-white shadow-sm`}>
+                    <step.icon size={24} />
+                  </div>
+
+                  <p className="mt-4 font-display text-3xl font-bold text-eco-900 sm:text-4xl">{step.value}</p>
+                  <p className="mt-1 text-xs font-medium uppercase tracking-wide text-eco-500 sm:text-sm">
+                    {step.label}
+                  </p>
+
+                  <div className="mt-3 h-1.5 w-full max-w-[120px] overflow-hidden rounded-full border border-eco-100 bg-eco-50">
+                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${step.percent}%` }} />
+                  </div>
+                  <p className="mt-1.5 text-xs text-eco-400">{step.percent}% от общего числа</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

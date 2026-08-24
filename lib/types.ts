@@ -94,7 +94,10 @@ export type Database = {
       profiles: {
         Row: Profile;
         Insert: Partial<Profile> & { id: string; display_name: string };
-        Update: Partial<Profile>;
+        // role намеренно исключён из Update — менять её можно только через
+        // admin_set_user_role() RPC (см. supabase.rpc в AdminUsersPanel.tsx), на уровне
+        // БД это также заблокировано триггером protect_profile_role (0010).
+        Update: Partial<Omit<Profile, "role">>;
         Relationships: [];
       };
       spots: {

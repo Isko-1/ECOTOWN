@@ -161,7 +161,7 @@ export function AddSpotForm({
         <Info size={15} className="mt-0.5 shrink-0 text-blue-500" />
         <p className="text-xs leading-relaxed text-blue-700">
           Метка появится на публичной карте EcoTown. Администратор получит уведомление
-          на почту <strong>iskair12@gmail.com</strong> и при необходимости свяжется с вами.
+          и при необходимости свяжется с вами.
         </p>
       </div>
 

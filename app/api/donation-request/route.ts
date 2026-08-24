@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  if (!checkRateLimit(`donation-request:${ip}`, 5, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: "Слишком много запросов, попробуйте позже" }, { status: 429 });
+  }
+
   const { spotId, spotTitle, purpose, goalAmount, requesterName } = await request.json();
 
   if (!spotId || !spotTitle || !purpose || !goalAmount) {

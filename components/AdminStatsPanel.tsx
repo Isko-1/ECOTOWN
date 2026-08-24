@@ -18,7 +18,20 @@ export async function AdminStatsPanel() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("admin_dashboard_stats");
 
-  if (error || !data) {
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+        <p className="font-medium">Не удалось загрузить статистику.</p>
+        <p className="mt-1 text-xs text-red-600">{error.message}</p>
+        <p className="mt-2 text-xs text-red-500">
+          Скорее всего функция admin_dashboard_stats() ещё не выполнена в Supabase SQL Editor —
+          см. supabase/migrations/0009_admin_dashboard_stats.sql.
+        </p>
+      </div>
+    );
+  }
+
+  if (!data) {
     return <p className="text-sm text-red-600">Не удалось загрузить статистику.</p>;
   }
 
@@ -68,21 +81,6 @@ export async function AdminStatsPanel() {
           отдельного трекинга визитов/сессий в системе нет. Воронка конверсии — на главной странице
           сайта (она публичная, здесь дублировать её не нужно).
         </p>
-      </section>
-
-      {/* Честно о том, чего не хватает */}
-      <section className="rounded-xl border border-dashed border-eco-200 bg-eco-50/50 p-4">
-        <h3 className="text-sm font-semibold text-eco-800">Пока недоступно</h3>
-        <ul className="mt-2 space-y-1 text-xs text-eco-600">
-          <li>
-            • <strong>Модерация и фрод</strong> — в приложении нет функции жалоб на метки/фото,
-            считать нечего
-          </li>
-          <li>
-            • <strong>Доля задач для коммунальных служб</strong> — нет поля, отмечающего что метка
-            требует спецтехники
-          </li>
-        </ul>
       </section>
     </div>
   );
