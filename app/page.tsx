@@ -129,7 +129,7 @@ export default async function HomePage() {
               {/* Кнопки */}
               <div className="pt-2 flex flex-wrap items-center gap-3">
                 {user ? (
-                  <Link href="/favorites">
+                  <Link href="/profile">
                     <Button size="lg" className="bg-eco-600 hover:bg-eco-700 shadow-lg shadow-eco-600/25 transition-all hover:scale-[1.02]">
                       Личный кабинет
                       <ArrowRight size={18} className="ml-1" />
@@ -308,7 +308,7 @@ export default async function HomePage() {
 
             <div className="flex flex-wrap gap-3 shrink-0">
               {user ? (
-                <Link href="/favorites">
+                <Link href="/profile">
                   <Button size="lg" variant="white">
                     Личный кабинет
                   </Button>

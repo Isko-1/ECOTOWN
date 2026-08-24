@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MapPin, X } from "lucide-react";
+import { MapPin, X, Maximize2, Minimize2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Spot, SpotStatus } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
@@ -10,12 +10,13 @@ import { AddSpotForm } from "@/components/AddSpotForm";
 import { MapFilters } from "@/components/MapFilters";
 import { MapSearch } from "@/components/MapSearch";
 import { SpotSidebar } from "@/components/SpotSidebar";
+import { CleanupWeatherWidget } from "@/components/CleanupWeatherWidget";
 import type { FlyToTarget } from "@/components/MapView";
 
 // Leaflet трогает window — грузим карту только на клиенте
 const MapView = dynamic(() => import("@/components/MapView").then((m) => m.MapView), {
   ssr: false,
-  loading: () => <div className="flex h-full items-center justify-center text-eco-500">Загружаем карту…</div>,
+  loading: () => <div className="flex h-full items-center justify-center text-eco-500 font-medium">Загружаем карту…</div>,
 });
 
 export default function MapPage() {
@@ -33,20 +34,29 @@ export default function MapPage() {
   const [minDifficulty, setMinDifficulty] = useState(1);
   const [maxDifficulty, setMaxDifficulty] = useState(5);
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // ── Sidebar state ──────────────────────────────────────────────────────────
-  // selectedSpot — метка, выбранная кликом на маркер
   const [selectedSpot, setSelectedSpot] = useState<Spot | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // ── Загрузка данных ────────────────────────────────────────────────────────
+  // ── Закрытие полноэкранного режима по клавише Escape ────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
 
+  // ── Загрузка данных ────────────────────────────────────────────────────────
   const loadSpots = useCallback(async () => {
     const { data } = await supabase.from("spots").select("*").order("created_at", { ascending: false });
     const fresh = data ?? [];
     setSpots(fresh);
 
-    // Если sidebar открыт — обновляем данные выбранной метки (статус мог измениться)
     setSelectedSpot((prev) => {
       if (!prev) return null;
       return fresh.find((s) => s.id === prev.id) ?? prev;
@@ -104,7 +114,6 @@ export default function MapPage() {
     handleChanged();
   }
 
-  // ── Открытие sidebar при клике на маркер ──────────────────────────────────
   function handleSpotClick(spot: Spot) {
     setSelectedSpot(spot);
     setSidebarOpen(true);
@@ -112,11 +121,9 @@ export default function MapPage() {
 
   function handleSidebarClose() {
     setSidebarOpen(false);
-    // Небольшая задержка, чтобы анимация закрытия успела сыграть
     setTimeout(() => setSelectedSpot(null), 300);
   }
 
-  // ── Фильтрация меток ───────────────────────────────────────────────────────
   const filteredSpots = useMemo(
     () =>
       spots.filter(
@@ -129,32 +136,65 @@ export default function MapPage() {
     setFlyToTarget({ lat, lng, nonce: Date.now() });
   }
 
+  const toggleFullscreen = () => setIsFullscreen((v) => !v);
+
   return (
-    <main className="flex h-[calc(100vh-4rem)] flex-col">
+    <main
+      className={
+        isFullscreen
+          ? "fixed inset-0 z-50 flex h-screen w-screen flex-col bg-white"
+          : "flex h-[calc(100vh-4rem)] flex-col"
+      }
+    >
       {/* ── Шапка страницы ── */}
-      <div className="flex items-center justify-between border-b border-eco-100 px-4 py-3">
-        <div>
-          <h1 className="font-display text-lg font-semibold text-eco-900">Карта волонтёров</h1>
-          <p className="text-xs text-eco-500">Меток на карте: {filteredSpots.length} из {spots.length}</p>
+      <div className="flex flex-wrap items-center justify-between border-b border-eco-100 bg-white px-4 py-2.5 shadow-sm gap-2">
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="font-display text-lg font-bold text-eco-900 leading-snug flex items-center gap-2">
+              Карта волонтёров
+            </h1>
+            <p className="text-xs text-eco-600 font-medium">
+              Меток: <span className="font-bold text-eco-800">{filteredSpots.length}</span> из {spots.length}
+            </p>
+          </div>
+
+          <div className="hidden md:block">
+            <CleanupWeatherWidget compact />
+          </div>
         </div>
 
-        {userId ? (
-          picking ? (
-            <Button size="sm" variant="secondary" onClick={cancelAdd}>
-              <X size={14} /> Отменить добавление
-            </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={toggleFullscreen}
+            className="border-eco-200 text-eco-800 hover:bg-eco-50 gap-1.5"
+            title={isFullscreen ? "Свернуть карту (Esc)" : "Развернуть карту во весь экран"}
+          >
+            {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+            <span className="hidden sm:inline">
+              {isFullscreen ? "Свернуть" : "Во весь экран"}
+            </span>
+          </Button>
+
+          {userId ? (
+            picking ? (
+              <Button size="sm" variant="secondary" onClick={cancelAdd} className="gap-1.5">
+                <X size={15} /> Отменить
+              </Button>
+            ) : (
+              <Button size="sm" onClick={() => setPicking(true)} className="gap-1.5 bg-eco-600 hover:bg-eco-700">
+                <MapPin size={15} /> Отметить место
+              </Button>
+            )
           ) : (
-            <Button size="sm" onClick={() => setPicking(true)}>
-              <MapPin size={14} /> Отметить место
-            </Button>
-          )
-        ) : (
-          <p className="text-xs text-eco-500">Войдите, чтобы добавлять метки</p>
-        )}
+            <p className="text-xs text-eco-500 hidden sm:block">Войдите, чтобы добавлять метки</p>
+          )}
+        </div>
       </div>
 
       {/* ── Фильтры и поиск ── */}
-      <div className="flex flex-col gap-2 border-b border-eco-100 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-2 border-b border-eco-100 bg-eco-50/50 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
         <MapFilters
           statusFilter={statusFilter}
           onStatusFilterChange={setStatusFilter}
@@ -167,7 +207,7 @@ export default function MapPage() {
       </div>
 
       {/* ── Карта + sidebar ── */}
-      <div className="relative flex-1">
+      <div className="relative flex-1 overflow-hidden">
         <MapView
           spots={filteredSpots}
           pickMode={picking}
@@ -175,13 +215,31 @@ export default function MapPage() {
           flyToTarget={flyToTarget}
           onPick={handlePick}
           onSpotClick={handleSpotClick}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
         />
+
+        {/* Плавающая Легенда меток */}
+        <div className="pointer-events-none absolute bottom-5 left-3 z-[400] flex flex-col gap-1 rounded-xl bg-white/90 p-2 shadow-md border border-eco-100 backdrop-blur text-[11px] text-eco-800">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-600 shadow-sm inline-block"></span>
+            <span>Требует уборки</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-sm inline-block"></span>
+            <span>В процессе</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-eco-600 shadow-sm inline-block"></span>
+            <span>Убрано</span>
+          </div>
+        </div>
 
         {/* Подсказка при выборе места */}
         {picking && !pendingPosition && (
-          <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center">
-            <span className="rounded-full bg-eco-800/90 px-3 py-1.5 text-xs text-white">
-              Кликните на карту, чтобы выбрать место
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-[450] flex justify-center">
+            <span className="rounded-full bg-eco-900/90 px-4 py-2 text-xs font-semibold text-white shadow-lg animate-pulse">
+              📍 Кликните по карте в месте загрязнения
             </span>
           </div>
         )}

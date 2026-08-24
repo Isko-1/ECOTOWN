@@ -2,9 +2,9 @@
 
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
-import { Crosshair } from "lucide-react";
+import { Crosshair, Maximize2, Minimize2, Layers, RotateCcw } from "lucide-react";
 import type { Spot } from "@/lib/types";
 import { spotIcon, pendingSpotIcon } from "@/components/SpotMarker";
 
@@ -14,10 +14,27 @@ export interface FlyToTarget {
   nonce: number;
 }
 
+export type MapTileStyle = "carto" | "satellite" | "osm";
+
 const URALSK_CENTER: [number, number] = [51.2333, 51.3667];
 
-const CARTO_TILE_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-const CARTO_ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
+const TILE_PROVIDERS: Record<MapTileStyle, { url: string; attribution: string; label: string }> = {
+  carto: {
+    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    label: "Светлая",
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri",
+    label: "Спутник",
+  },
+  osm: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; OpenStreetMap contributors',
+    label: "Схема",
+  },
+};
 
 function clusterIcon(count: number) {
   return L.divIcon({
@@ -60,6 +77,18 @@ function FlyTo({ target }: { target: FlyToTarget | null }) {
   return null;
 }
 
+/** Авто-обновление тайлов при изменениях размера (например, во весь экран) */
+function MapResizer({ isFullscreen }: { isFullscreen?: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [map, isFullscreen]);
+  return null;
+}
+
 function LocateMeButton() {
   const map = useMap();
   const [locating, setLocating] = useState(false);
@@ -77,7 +106,6 @@ function LocateMeButton() {
 
     const onLocationError = (e: L.ErrorEvent) => {
       console.warn("Leaflet locate error:", e.message);
-      // Запасной вариант: обычный navigator.geolocation без требовательного highAccuracy
       if (typeof window !== "undefined" && "geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
@@ -117,33 +145,45 @@ function LocateMeButton() {
   const handleLocate = () => {
     setLocating(true);
     setErrorMsg(null);
-    // Используем встроенный механизм Leaflet map.locate
     map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true, timeout: 8000 });
   };
 
   return (
     <>
-      <div className="absolute right-3 top-20 z-[400] flex flex-col items-end gap-1">
-        <button
-          type="button"
-          onClick={handleLocate}
-          disabled={locating}
-          title="Где я на карте"
-          aria-label="Где я на карте"
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-eco-800 shadow-lg border border-eco-100 hover:bg-eco-50 transition-all active:scale-95 disabled:opacity-60"
-        >
-          <Crosshair size={20} className={locating ? "animate-spin text-eco-600" : "text-eco-700"} />
-        </button>
+      <button
+        type="button"
+        onClick={handleLocate}
+        disabled={locating}
+        title="Где я на карте"
+        aria-label="Где я на карте"
+        className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-eco-800 shadow-md border border-eco-100 hover:bg-eco-50 transition-all active:scale-95 disabled:opacity-60"
+      >
+        <Crosshair size={18} className={locating ? "animate-spin text-eco-600" : "text-eco-700"} />
+      </button>
 
-        {errorMsg && (
-          <div className="max-w-[200px] rounded-lg bg-eco-900/90 text-white text-[11px] p-2 shadow-xl backdrop-blur-sm animate-in fade-in">
-            {errorMsg}
-          </div>
-        )}
-      </div>
+      {errorMsg && (
+        <div className="absolute right-0 top-12 z-[500] max-w-[200px] rounded-lg bg-eco-900/90 text-white text-[11px] p-2 shadow-xl backdrop-blur-sm animate-in fade-in">
+          {errorMsg}
+        </div>
+      )}
 
       {userPos && <Marker position={userPos} icon={userLocationIcon()} />}
     </>
+  );
+}
+
+function ResetCenterButton() {
+  const map = useMap();
+  return (
+    <button
+      type="button"
+      onClick={() => map.flyTo(URALSK_CENTER, 13, { animate: true })}
+      title="Центрировать карту на Уральск"
+      aria-label="Центрировать карту на Уральск"
+      className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-eco-800 shadow-md border border-eco-100 hover:bg-eco-50 transition-all active:scale-95"
+    >
+      <RotateCcw size={17} className="text-eco-700" />
+    </button>
   );
 }
 
@@ -164,6 +204,12 @@ function SpotMarkersWithClustering({
       setZoom(map.getZoom());
     },
   });
+
+  const getStatusLabel = (status: string) => {
+    if (status === "new") return "🔴 Требует уборки";
+    if (status === "in_progress") return "🟡 В работе";
+    return "🟢 Убрано";
+  };
 
   // Кластеризация при отдаленном зуме (< 13)
   if (zoom < 13 && spots.length > 3) {
@@ -196,7 +242,12 @@ function SpotMarkersWithClustering({
                     if (!pickMode) onSpotClick(spot);
                   },
                 }}
-              />
+              >
+                <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+                  <div className="font-semibold text-xs text-eco-900">{spot.title}</div>
+                  <div className="text-[11px] text-eco-700">{getStatusLabel(spot.status)}</div>
+                </Tooltip>
+              </Marker>
             );
           }
           return (
@@ -228,7 +279,12 @@ function SpotMarkersWithClustering({
               if (!pickMode) onSpotClick(spot);
             },
           }}
-        />
+        >
+          <Tooltip direction="top" offset={[0, -8]} opacity={0.95}>
+            <div className="font-semibold text-xs text-eco-900">{spot.title}</div>
+            <div className="text-[11px] text-eco-700">{getStatusLabel(spot.status)}</div>
+          </Tooltip>
+        </Marker>
       ))}
     </>
   );
@@ -241,6 +297,8 @@ export function MapView({
   flyToTarget,
   onPick,
   onSpotClick,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: {
   spots: Spot[];
   pickMode: boolean;
@@ -248,20 +306,88 @@ export function MapView({
   flyToTarget: FlyToTarget | null;
   onPick: (lat: number, lng: number) => void;
   onSpotClick: (spot: Spot) => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }) {
+  const [tileStyle, setTileStyle] = useState<MapTileStyle>("carto");
+  const [showLayerMenu, setShowLayerMenu] = useState(false);
+
+  const activeProvider = TILE_PROVIDERS[tileStyle];
+
   return (
-    <MapContainer center={URALSK_CENTER} zoom={13} className="h-full w-full" scrollWheelZoom>
-      <TileLayer url={CARTO_TILE_URL} attribution={CARTO_ATTRIBUTION} />
+    <div className="relative h-full w-full">
+      <MapContainer center={URALSK_CENTER} zoom={13} className="h-full w-full" scrollWheelZoom>
+        <TileLayer url={activeProvider.url} attribution={activeProvider.attribution} />
 
-      {pickMode && <ClickCatcher onPick={onPick} />}
-      <FlyTo target={flyToTarget} />
-      <LocateMeButton />
+        {pickMode && <ClickCatcher onPick={onPick} />}
+        <FlyTo target={flyToTarget} />
+        <MapResizer isFullscreen={isFullscreen} />
 
-      <SpotMarkersWithClustering spots={spots} pickMode={pickMode} onSpotClick={onSpotClick} />
+        <SpotMarkersWithClustering spots={spots} pickMode={pickMode} onSpotClick={onSpotClick} />
 
-      {pendingPosition && (
-        <Marker position={[pendingPosition.lat, pendingPosition.lng]} icon={pendingSpotIcon()} />
-      )}
-    </MapContainer>
+        {pendingPosition && (
+          <Marker position={[pendingPosition.lat, pendingPosition.lng]} icon={pendingSpotIcon()} />
+        )}
+
+        {/* ── Панель элементов управления картой (Справа сверху) ── */}
+        <div className="absolute right-3 top-3 z-[400] flex flex-col gap-2">
+          {/* Кнопка разворачивания во весь экран */}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? "Свернуть карту" : "Развернуть карту во весь экран"}
+              aria-label={isFullscreen ? "Свернуть карту" : "Развернуть карту во весь экран"}
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-eco-800 shadow-md border border-eco-100 hover:bg-eco-50 transition-all active:scale-95"
+            >
+              {isFullscreen ? <Minimize2 size={18} className="text-eco-700" /> : <Maximize2 size={18} className="text-eco-700" />}
+            </button>
+          )}
+
+          {/* Переключатель слоев карты (Спутник / Схема / Светлая) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowLayerMenu((v) => !v)}
+              title="Режим карты (Спутник / Схема)"
+              aria-label="Режим карты"
+              className={`flex h-9 w-9 items-center justify-center rounded-xl bg-white shadow-md border border-eco-100 transition-all active:scale-95 ${
+                showLayerMenu ? "bg-eco-100 text-eco-900 border-eco-400" : "text-eco-800 hover:bg-eco-50"
+              }`}
+            >
+              <Layers size={18} className="text-eco-700" />
+            </button>
+
+            {showLayerMenu && (
+              <div className="absolute right-11 top-0 z-[500] flex flex-col gap-1 rounded-xl border border-eco-100 bg-white p-1.5 shadow-xl animate-in fade-in slide-in-from-right-2">
+                {(Object.keys(TILE_PROVIDERS) as MapTileStyle[]).map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      setTileStyle(key);
+                      setShowLayerMenu(false);
+                    }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-colors text-left ${
+                      tileStyle === key
+                        ? "bg-eco-600 text-white"
+                        : "text-eco-800 hover:bg-eco-50"
+                    }`}
+                  >
+                    {TILE_PROVIDERS[key].label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Сброс центрирования */}
+          <ResetCenterButton />
+
+          {/* Кнопка "Где я" */}
+          <LocateMeButton />
+        </div>
+      </MapContainer>
+    </div>
   );
 }

@@ -14,7 +14,10 @@ import type { Profile } from "@/lib/types";
 const links = [
   { href: "/", label: "Главная" },
   { href: "/map", label: "Карта" },
+  { href: "/events", label: "Субботники" },
+  { href: "/leaderboard", label: "Рейтинг" },
   { href: "/favorites", label: "Избранное" },
+  { href: "/profile", label: "Личный кабинет" },
 ];
 
 export function Header() {
@@ -65,7 +68,7 @@ export function Header() {
         {/* Десктоп-навигация */}
         <nav className="hidden items-center gap-6 md:flex">
           {links.map((l) => (
-            <Link key={l.href} href={l.href} className="text-sm font-medium text-eco-700 hover:text-eco-900">
+            <Link key={l.href} href={l.href} className="text-sm font-medium text-eco-700 hover:text-eco-900 transition-colors">
               {l.label}
             </Link>
           ))}
@@ -79,21 +82,30 @@ export function Header() {
         <div className="hidden items-center gap-2 md:flex">
           {user ? (
             <>
-              <Link href="/profile" className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-eco-800 hover:bg-eco-50">
+              <Link
+                href="/profile"
+                className="flex items-center gap-2.5 rounded-full border border-eco-200/80 bg-eco-50/80 px-3 py-1.5 text-sm font-semibold text-eco-900 shadow-sm transition-all hover:bg-eco-100 hover:shadow"
+                title="Перейти в Личный кабинет"
+              >
                 <Avatar
                   displayName={profile?.display_name ?? user.email ?? "?"}
                   avatarUrl={profile?.avatar_url ?? null}
                   size="sm"
                 />
-                {profile?.display_name ?? "Профиль"}
+                <span>{profile?.display_name ? profile.display_name : "Личный кабинет"}</span>
               </Link>
-              <Button variant="secondary" size="sm" onClick={handleLogout}>
-                <LogOut size={16} />
+              <Button variant="secondary" size="sm" onClick={handleLogout} className="text-xs">
+                <LogOut size={15} />
                 Выйти
               </Button>
             </>
           ) : (
             <>
+              <Link href="/profile">
+                <Button variant="outline" size="sm" className="border-eco-200 text-eco-800 hover:bg-eco-50">
+                  Личный кабинет
+                </Button>
+              </Link>
               <Link href="/login">
                 <Button variant="ghost" size="sm">Войти</Button>
               </Link>
@@ -104,7 +116,7 @@ export function Header() {
           )}
         </div>
 
-        {/* Мобильное меню — исправление бага №1 */}
+        {/* Мобильное меню */}
         <button
           aria-label="Открыть меню"
           onClick={() => setOpen(true)}
@@ -138,13 +150,13 @@ export function Header() {
           {user ? (
             <>
               <Link href="/profile" onClick={() => setOpen(false)}>
-                <Button variant="secondary" className="w-full">
+                <Button variant="secondary" className="w-full justify-start gap-2">
                   <Avatar
                     displayName={profile?.display_name ?? user.email ?? "?"}
                     avatarUrl={profile?.avatar_url ?? null}
                     size="sm"
                   />
-                  {profile?.display_name ?? "Профиль"}
+                  <span>Личный кабинет ({profile?.display_name ?? "Профиль"})</span>
                 </Button>
               </Link>
               <Button variant="primary" className="w-full" onClick={handleLogout}>
@@ -154,6 +166,11 @@ export function Header() {
             </>
           ) : (
             <>
+              <Link href="/profile" onClick={() => setOpen(false)}>
+                <Button variant="outline" className="w-full border-eco-200">
+                  Личный кабинет
+                </Button>
+              </Link>
               <Link href="/login" onClick={() => setOpen(false)}>
                 <Button variant="secondary" className="w-full">Войти</Button>
               </Link>

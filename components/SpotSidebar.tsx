@@ -28,6 +28,8 @@ import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { ShareButton } from "@/components/ShareButton";
 import { DonationRequestForm } from "@/components/DonationRequestForm";
 import { DonationProgress } from "@/components/DonationProgress";
+import { IcsExportButton } from "@/components/IcsExportButton";
+import { CleanupWeatherWidget } from "@/components/CleanupWeatherWidget";
 
 // ─── Вспомогательные данные ───────────────────────────────────────────────────
 
@@ -340,7 +342,7 @@ export function SpotSidebar({
 
               {/* Дата и время субботника */}
               {spot.event_date && (
-                <div className="rounded-xl border border-eco-200 bg-eco-50/70 p-3.5 space-y-2">
+                <div className="rounded-xl border border-eco-200 bg-eco-50/70 p-3.5 space-y-3">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-eco-800 flex items-center gap-1.5">
                       <Calendar size={14} className="text-eco-600" /> Дата и время субботника
@@ -358,16 +360,23 @@ export function SpotSidebar({
                       minute: "2-digit",
                     })}
                   </p>
-                  <a
-                    href={getGoogleCalendarUrl(spot)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-eco-700 hover:text-eco-900 underline"
-                  >
-                    📅 Добавить в Google Календарь
-                  </a>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-eco-200/60">
+                    <a
+                      href={getGoogleCalendarUrl(spot)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-eco-200 bg-white px-2.5 py-1 text-xs font-semibold text-eco-700 hover:bg-eco-50 shadow-xs"
+                    >
+                      📅 Google Календарь
+                    </a>
+                    <IcsExportButton spot={spot} />
+                  </div>
                 </div>
               )}
+
+              {/* Виджет погоды в Уральске */}
+              <CleanupWeatherWidget />
 
               {/* Сложность */}
               <div>
