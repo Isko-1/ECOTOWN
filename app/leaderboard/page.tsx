@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trophy, Award, Medal, Users, MapPin, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Header } from "@/components/Header";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 
@@ -84,8 +83,6 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-eco-50/40 text-eco-950 flex flex-col">
-      <Header />
-
       <main className="mx-auto w-full max-w-4xl px-4 py-8 flex-1">
         {/* Заголовок */}
         <div className="mb-8 text-center">

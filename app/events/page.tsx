@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Calendar, MapPin, Clock, ArrowRight, Sparkles, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Spot } from "@/lib/types";
-import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/Button";
 import { IcsExportButton } from "@/components/IcsExportButton";
 import { CleanupWeatherWidget } from "@/components/CleanupWeatherWidget";
@@ -53,8 +52,6 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen bg-eco-50/40 text-eco-950 flex flex-col">
-      <Header />
-
       <main className="mx-auto w-full max-w-5xl px-4 py-8 flex-1">
         {/* Шапка страницы */}
         <div className="mb-8 rounded-3xl border border-eco-200/80 bg-gradient-to-br from-eco-600 via-eco-700 to-emerald-700 p-6 text-white shadow-xl md:p-8">
