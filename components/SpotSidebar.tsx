@@ -375,8 +375,8 @@ export function SpotSidebar({
                 </div>
               )}
 
-              {/* Виджет погоды в Уральске */}
-              <CleanupWeatherWidget />
+              {/* Виджет погоды в Уральске на дату субботника */}
+              <CleanupWeatherWidget eventDate={spot.event_date} />
 
               {/* Сложность */}
               <div>
@@ -522,11 +522,18 @@ export function SpotSidebar({
                     </>
                   )}
 
-                  <Button size="sm" variant="secondary" disabled={favBusy} onClick={toggleFavorite}>
-                    {favBusy
-                      ? <Loader2 size={14} className="animate-spin" />
-                      : <Heart size={14} className={isFavorite ? "fill-eco-700" : ""} />
-                    }
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className={isFavorite ? "border-red-200 bg-red-50/90 text-red-700 hover:bg-red-100 font-semibold" : ""}
+                    disabled={favBusy}
+                    onClick={toggleFavorite}
+                  >
+                    {favBusy ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Heart size={14} className={isFavorite ? "fill-red-500 text-red-500" : "text-eco-600"} />
+                    )}
                     {isFavorite ? "В избранном" : "В избранное"}
                   </Button>
 

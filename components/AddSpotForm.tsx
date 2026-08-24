@@ -8,11 +8,15 @@ import type { SpotStatus } from "@/lib/types";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { FileUploadInput } from "@/components/ui/FileUploadInput";
 
 async function uploadPhoto(file: File, userId: string) {
   const supabase = createClient();
   const compressed = await compressImage(file);
-  const path = `${userId}/${Date.now()}-${compressed.name}`;
+  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+  const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${safeExt}`;
+  const path = `${userId}/${safeName}`;
   const { error } = await supabase.storage.from("spot-photos").upload(path, compressed);
   if (error) throw error;
   return supabase.storage.from("spot-photos").getPublicUrl(path).data.publicUrl;
@@ -102,7 +106,7 @@ export function AddSpotForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-72 flex-col gap-3 text-sm">
+    <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-3 text-sm">
       <p className="text-xs text-eco-500">
         Координаты: {lat.toFixed(5)}, {lng.toFixed(5)}
       </p>
@@ -176,25 +180,17 @@ export function AddSpotForm({
         </p>
       </div>
 
-      <div>
-        <label className="mb-1 block font-medium text-eco-800">Фото «до»</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setBeforeFile(e.target.files?.[0] ?? null)}
-          className="text-xs"
-        />
-      </div>
+      <FileUploadInput
+        label="Фото «до» уборки"
+        file={beforeFile}
+        onChange={setBeforeFile}
+      />
 
-      <div>
-        <label className="mb-1 block font-medium text-eco-800">Фото «после» (если уже убрано)</label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setAfterFile(e.target.files?.[0] ?? null)}
-          className="text-xs"
-        />
-      </div>
+      <FileUploadInput
+        label="Фото «после» уборки (если уже убрано)"
+        file={afterFile}
+        onChange={setAfterFile}
+      />
 
       {error && <p className="text-red-600">{error}</p>}
 

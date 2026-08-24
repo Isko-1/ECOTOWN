@@ -61,11 +61,13 @@ export default async function FavoritesPage() {
         <LogoutButton />
       </section>
 
-      <h1 className="mt-10 font-display text-2xl font-bold text-eco-900">Избранное</h1>
+      <h1 className="mt-10 font-display text-2xl font-bold text-eco-900 flex items-center gap-2">
+        <Heart size={24} className="fill-red-500 text-red-500" /> Избранное
+      </h1>
 
       {favoriteSpots.length === 0 ? (
         <div className="mt-16 flex flex-col items-center gap-3 text-center">
-          <Heart size={40} className="text-eco-200" />
+          <Heart size={44} className="text-red-300 fill-red-100 animate-pulse" />
           <p className="text-eco-700">Нет избранных меток</p>
           <Link href="/map">
             <Button variant="secondary">Открыть карту</Button>

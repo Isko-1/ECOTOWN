@@ -12,10 +12,10 @@ import { Button } from "@/components/ui/Button";
 
 async function uploadAvatar(file: File, userId: string) {
   const supabase = createClient();
-  // аватар всегда круглый и маленький на экране — 512px хватает с запасом
   const compressed = await compressImage(file, 512, 0.85);
-  // одно фиксированное имя на пользователя — новая загрузка перезаписывает старую
-  const path = `${userId}/avatar-${Date.now()}.${compressed.name.split(".").pop()}`;
+  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+  const path = `${userId}/avatar-${Date.now()}.${safeExt}`;
   const { error } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true });
   if (error) throw error;
   return supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;

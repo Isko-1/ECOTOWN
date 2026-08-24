@@ -8,11 +8,15 @@ import type { Spot, SpotStatus } from "@/lib/types";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { FileUploadInput } from "@/components/ui/FileUploadInput";
 
 async function uploadPhoto(file: File, userId: string) {
   const supabase = createClient();
   const compressed = await compressImage(file);
-  const path = `${userId}/${Date.now()}-${compressed.name}`;
+  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+  const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${safeExt}`;
+  const path = `${userId}/${safeName}`;
   const { error } = await supabase.storage.from("spot-photos").upload(path, compressed);
   if (error) throw error;
   return supabase.storage.from("spot-photos").getPublicUrl(path).data.publicUrl;
@@ -160,23 +164,12 @@ export function EditSpotForm({
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block font-medium text-eco-800">Фото «до» (замена)</label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setBeforeFile(e.target.files?.[0] ?? null)}
-              className="text-xs text-eco-700"
-            />
-            {spot.photo_before_url && !beforeFile && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={spot.photo_before_url}
-                alt="Текущее фото до"
-                className="mt-2 h-20 w-auto rounded-lg object-cover"
-              />
-            )}
-          </div>
+          <FileUploadInput
+            label="Фото «до» уборки (замена)"
+            file={beforeFile}
+            currentUrl={spot.photo_before_url}
+            onChange={setBeforeFile}
+          />
         </>
       )}
 

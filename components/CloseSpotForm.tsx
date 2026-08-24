@@ -4,11 +4,15 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/compressImage";
 import { Button } from "@/components/ui/Button";
+import { FileUploadInput } from "@/components/ui/FileUploadInput";
 
 async function uploadPhoto(file: File, userId: string) {
   const supabase = createClient();
   const compressed = await compressImage(file);
-  const path = `${userId}/${Date.now()}-${compressed.name}`;
+  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+  const safeName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${safeExt}`;
+  const path = `${userId}/${safeName}`;
   const { error } = await supabase.storage.from("spot-photos").upload(path, compressed);
   if (error) throw error;
   return supabase.storage.from("spot-photos").getPublicUrl(path).data.publicUrl;
@@ -57,16 +61,12 @@ export function CloseSpotForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3 text-sm">
       <p className="text-eco-700">Загрузи фото убранного места — это подтверждение работы для остальных волонтёров.</p>
-      <div>
-        <label className="mb-1 block font-medium text-eco-800">Фото «после»</label>
-        <input
-          type="file"
-          accept="image/*"
-          required
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-xs"
-        />
-      </div>
+      <FileUploadInput
+        label="Фото «после» уборки (обязательно)"
+        file={file}
+        onChange={setFile}
+        required
+      />
       {error && <p className="text-red-600">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={busy} className="flex-1">

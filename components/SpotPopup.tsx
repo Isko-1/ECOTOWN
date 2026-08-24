@@ -255,8 +255,14 @@ export function SpotPopup({
             </>
           )}
 
-          <Button size="sm" variant="secondary" disabled={busy} onClick={toggleFavorite}>
-            <Heart size={14} className={isFavorite ? "fill-eco-700" : ""} />
+          <Button
+            size="sm"
+            variant="secondary"
+            className={isFavorite ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100 font-semibold" : ""}
+            disabled={busy}
+            onClick={toggleFavorite}
+          >
+            <Heart size={14} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
             {isFavorite ? "В избранном" : "В избранное"}
           </Button>
         </div>
