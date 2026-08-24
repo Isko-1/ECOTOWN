@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdminDonationsPanel } from "@/components/AdminDonationsPanel";
 import { AdminUsersPanel } from "@/components/AdminUsersPanel";
+import { AdminStatsPanel } from "@/components/AdminStatsPanel";
+import { AdminTabs } from "@/components/AdminTabs";
 import type { SpotDonation, Spot, Profile, AppSettings, AdminUserRow } from "@/lib/types";
 
 export default async function AdminPage() {
@@ -47,23 +49,30 @@ export default async function AdminPage() {
       <h1 className="font-display text-2xl font-bold text-eco-900">Админ-панель</h1>
       <p className="mt-1 text-sm text-eco-600">Заявки на донаты, активные сборы и общие настройки платформы.</p>
 
-      <AdminDonationsPanel
-        pending={(pending ?? []) as unknown as PendingRow[]}
-        active={(active ?? []) as unknown as PendingRow[]}
-        settings={(settings ?? null) as AppSettings | null}
-      />
+      <AdminTabs
+        donationsAndUsers={
+          <>
+            <AdminDonationsPanel
+              pending={(pending ?? []) as unknown as PendingRow[]}
+              active={(active ?? []) as unknown as PendingRow[]}
+              settings={(settings ?? null) as AppSettings | null}
+            />
 
-      <section className="mt-10">
-        <h2 className="font-display text-lg font-semibold text-eco-900">
-          Пользователи ({(users ?? []).length})
-        </h2>
-        <p className="mt-1 text-sm text-eco-600">
-          Модератор может редактировать любую метку на карте, админ — ещё и всё, что выше на этой странице.
-        </p>
-        <div className="mt-3">
-          <AdminUsersPanel users={(users ?? []) as AdminUserRow[]} myId={user.id} />
-        </div>
-      </section>
+            <section className="mt-10">
+              <h2 className="font-display text-lg font-semibold text-eco-900">
+                Пользователи ({(users ?? []).length})
+              </h2>
+              <p className="mt-1 text-sm text-eco-600">
+                Модератор может редактировать любую метку на карте, админ — ещё и всё, что выше на этой странице.
+              </p>
+              <div className="mt-3">
+                <AdminUsersPanel users={(users ?? []) as AdminUserRow[]} myId={user.id} />
+              </div>
+            </section>
+          </>
+        }
+        stats={<AdminStatsPanel />}
+      />
     </main>
   );
 }
