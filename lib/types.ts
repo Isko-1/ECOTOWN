@@ -7,7 +7,7 @@ export type Profile = {
   bio: string | null;
   city: string | null;
   phone: string | null;   // номер телефона — доп. контакт волонтёра
-  role: "user" | "admin";
+  role: "user" | "moderator" | "admin";
   created_at: string;
 };
 
@@ -20,7 +20,6 @@ export type Spot = {
   lng: number;
   status: SpotStatus;
   difficulty: number;
-  is_public: boolean;
   photo_before_url: string | null;
   photo_after_url: string | null;
   created_at: string;
@@ -71,6 +70,14 @@ export type DonationTransaction = {
   amount: number;
   recorded_by: string | null;
   note: string | null;
+  created_at: string;
+};
+
+export type AdminUserRow = {
+  id: string;
+  display_name: string;
+  email: string;
+  role: "user" | "moderator" | "admin";
   created_at: string;
 };
 

@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Loader2,
   Calendar,
+  Pencil,
 } from "lucide-react";
 import type { Spot, SpotStatus, Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
@@ -22,6 +23,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { SpotChat } from "@/components/SpotChat";
 import { Modal } from "@/components/ui/Modal";
 import { CloseSpotForm } from "@/components/CloseSpotForm";
+import { EditSpotForm } from "@/components/EditSpotForm";
 import { DonationRequestForm } from "@/components/DonationRequestForm";
 import { DonationProgress } from "@/components/DonationProgress";
 import { useEffect } from "react";
@@ -73,6 +75,8 @@ export function SpotSidebar({
   // ── данные ──
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const [closeOpen, setCloseOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [myRole, setMyRole] = useState<"user" | "moderator" | "admin">("user");
   const [volunteers, setVolunteers] = useState<Pick<Profile, "id" | "display_name" | "avatar_url">[]>([]);
   const [donation, setDonation] = useState<SpotDonation | null>(null);
   const [kaspiNumber, setKaspiNumber] = useState<string | null>(null);
@@ -109,10 +113,13 @@ export function SpotSidebar({
     if (!userId) return;
     supabase
       .from("profiles")
-      .select("display_name")
+      .select("display_name, role")
       .eq("id", userId)
       .single()
-      .then(({ data }) => setMyName(data?.display_name ?? ""));
+      .then(({ data }) => {
+        setMyName(data?.display_name ?? "");
+        setMyRole((data?.role as "user" | "moderator" | "admin") ?? "user");
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
@@ -452,6 +459,10 @@ export function SpotSidebar({
                     }
                     {isFavorite ? "В избранном" : "В избранное"}
                   </Button>
+
+                  <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)}>
+                    <Pencil size={14} /> Редактировать
+                  </Button>
                 </div>
               )}
             </div>
@@ -481,6 +492,23 @@ export function SpotSidebar({
               onChanged();
             }}
             onCancel={() => setCloseOpen(false)}
+          />
+        </Modal>
+      )}
+
+      {/* Modal редактирования метки — модератор/админ получает полный доступ к ЛЮБОЙ метке */}
+      {userId && spot && (
+        <Modal open={editOpen} onOpenChange={setEditOpen} title="Редактировать метку">
+          <EditSpotForm
+            spot={spot}
+            userId={userId}
+            isCreator={userId === spot.created_by}
+            canEditAll={myRole === "moderator" || myRole === "admin"}
+            onDone={() => {
+              setEditOpen(false);
+              onChanged();
+            }}
+            onCancel={() => setEditOpen(false)}
           />
         </Modal>
       )}

@@ -34,22 +34,27 @@ export function EditSpotForm({
   spot,
   userId,
   isCreator,
+  canEditAll,
   onDone,
   onCancel,
 }: {
   spot: Spot;
   userId: string;
   isCreator: boolean;
+  /** true для модератора/админа — полные права редактирования на ЛЮБУЮ метку, не только на свою */
+  canEditAll?: boolean;
   onDone: () => void;
   onCancel: () => void;
 }) {
   const supabase = createClient();
 
-  // ── поля только для создателя ──
+  // редакторские права на все поля — у автора метки ИЛИ у модератора/админа
+  const fullAccess = isCreator || !!canEditAll;
+
+  // ── поля только для полного доступа ──
   const [title, setTitle]               = useState(spot.title);
   const [description, setDescription]   = useState(spot.description);
   const [difficulty, setDifficulty]     = useState(spot.difficulty);
-  const [isPublic, setIsPublic]         = useState(spot.is_public);
   const [beforeFile, setBeforeFile]     = useState<File | null>(null);
 
   // ── статус — для всех ──
@@ -64,8 +69,8 @@ export function EditSpotForm({
     setBusy(true);
 
     try {
-      if (isCreator) {
-        // Создатель обновляет всё
+      if (fullAccess) {
+        // Автор или модератор/админ обновляет всё
         let photo_before_url = spot.photo_before_url;
         if (beforeFile) {
           photo_before_url = await uploadPhoto(beforeFile, userId);
@@ -73,7 +78,7 @@ export function EditSpotForm({
 
         const { error: updateError } = await supabase
           .from("spots")
-          .update({ title, description, difficulty, is_public: isPublic, status, photo_before_url })
+          .update({ title, description, difficulty, status, photo_before_url })
           .eq("id", spot.id);
 
         if (updateError) throw updateError;
@@ -98,8 +103,8 @@ export function EditSpotForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-sm">
 
-      {/* ── Блок: только для создателя ── */}
-      {isCreator && (
+      {/* ── Блок: полный доступ (автор метки или модератор/админ) ── */}
+      {fullAccess && (
         <>
           <div>
             <label className="mb-1 block font-medium text-eco-800">Название</label>
@@ -153,16 +158,6 @@ export function EditSpotForm({
               />
             )}
           </div>
-
-          <label className="flex items-center gap-2 text-eco-800">
-            <input
-              type="checkbox"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="h-4 w-4 rounded border-eco-300 accent-eco-600"
-            />
-            Публичная метка (видна всем)
-          </label>
         </>
       )}
 

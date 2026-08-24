@@ -37,7 +37,6 @@ export function AddSpotForm({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<SpotStatus>("new");
   const [difficulty, setDifficulty] = useState(1);
-  const [isPublic, setIsPublic] = useState(true);
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
   const [afterFile, setAfterFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -63,7 +62,6 @@ export function AddSpotForm({
           lng,
           status,
           difficulty,
-          is_public: isPublic,
           photo_before_url,
           photo_after_url,
         })
@@ -186,11 +184,6 @@ export function AddSpotForm({
           className="text-xs"
         />
       </div>
-
-      <label className="flex items-center gap-2 text-eco-800">
-        <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
-        Публичная метка
-      </label>
 
       {error && <p className="text-red-600">{error}</p>}
 
