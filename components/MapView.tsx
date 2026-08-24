@@ -64,43 +64,82 @@ function LocateMeButton() {
   const map = useMap();
   const [locating, setLocating] = useState(false);
   const [userPos, setUserPos] = useState<[number, number] | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onLocationFound = (e: L.LocationEvent) => {
+      const latlng: [number, number] = [e.latlng.lat, e.latlng.lng];
+      setUserPos(latlng);
+      map.flyTo(latlng, 16, { animate: true });
+      setLocating(false);
+      setErrorMsg(null);
+    };
+
+    const onLocationError = (e: L.ErrorEvent) => {
+      console.warn("Leaflet locate error:", e.message);
+      // Запасной вариант: обычный navigator.geolocation без требовательного highAccuracy
+      if (typeof window !== "undefined" && "geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const latlng: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+            setUserPos(latlng);
+            map.flyTo(latlng, 16, { animate: true });
+            setLocating(false);
+            setErrorMsg(null);
+          },
+          (err) => {
+            setLocating(false);
+            let msg = "Не удалось определить местоположение.";
+            if (err.code === 1) msg = "Разрешите доступ к геопозиции в настройках браузера.";
+            else if (err.code === 2) msg = "Геолокация недоступна на устройстве.";
+            else if (err.code === 3) msg = "Превышено время ожидания ответа GPS.";
+            setErrorMsg(msg);
+            setTimeout(() => setErrorMsg(null), 5000);
+          },
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+        );
+      } else {
+        setLocating(false);
+        setErrorMsg("Геолокация не поддерживается вашим браузером.");
+        setTimeout(() => setErrorMsg(null), 5000);
+      }
+    };
+
+    map.on("locationfound", onLocationFound);
+    map.on("locationerror", onLocationError);
+
+    return () => {
+      map.off("locationfound", onLocationFound);
+      map.off("locationerror", onLocationError);
+    };
+  }, [map]);
 
   const handleLocate = () => {
     setLocating(true);
-    if (!navigator.geolocation) {
-      alert("Геолокация не поддерживается вашим браузером");
-      setLocating(false);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setUserPos([lat, lng]);
-        map.flyTo([lat, lng], 16, { animate: true });
-        setLocating(false);
-      },
-      (err) => {
-        alert("Не удалось определить координаты: " + err.message);
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    setErrorMsg(null);
+    // Используем встроенный механизм Leaflet map.locate
+    map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true, timeout: 8000 });
   };
 
   return (
     <>
-      <div className="absolute right-3 top-20 z-[400]">
+      <div className="absolute right-3 top-20 z-[400] flex flex-col items-end gap-1">
         <button
           type="button"
           onClick={handleLocate}
           disabled={locating}
           title="Где я на карте"
           aria-label="Где я на карте"
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-eco-800 shadow-lg border border-eco-100 hover:bg-eco-50 transition-all active:scale-95"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-eco-800 shadow-lg border border-eco-100 hover:bg-eco-50 transition-all active:scale-95 disabled:opacity-60"
         >
           <Crosshair size={20} className={locating ? "animate-spin text-eco-600" : "text-eco-700"} />
         </button>
+
+        {errorMsg && (
+          <div className="max-w-[200px] rounded-lg bg-eco-900/90 text-white text-[11px] p-2 shadow-xl backdrop-blur-sm animate-in fade-in">
+            {errorMsg}
+          </div>
+        )}
       </div>
 
       {userPos && <Marker position={userPos} icon={userLocationIcon()} />}

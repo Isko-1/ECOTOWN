@@ -309,13 +309,13 @@ export default async function HomePage() {
             <div className="flex flex-wrap gap-3 shrink-0">
               {user ? (
                 <Link href="/favorites">
-                  <Button size="lg" className="bg-white text-eco-950 hover:bg-eco-50 shadow-lg font-bold">
+                  <Button size="lg" variant="white">
                     Личный кабинет
                   </Button>
                 </Link>
               ) : (
                 <Link href="/register">
-                  <Button size="lg" className="bg-white text-eco-950 hover:bg-eco-50 shadow-lg font-bold">
+                  <Button size="lg" variant="white">
                     Присоединиться
                   </Button>
                 </Link>
