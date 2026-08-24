@@ -63,6 +63,7 @@ export function EditSpotForm({
     spot.event_date ? new Date(spot.event_date).toISOString().slice(0, 16) : ""
   );
   const [beforeFile, setBeforeFile]     = useState<File | null>(null);
+  const [afterFile, setAfterFile]       = useState<File | null>(null);
 
   // ── статус — для всех ──
   const [status, setStatus]             = useState<SpotStatus>(spot.status);
@@ -82,6 +83,10 @@ export function EditSpotForm({
         if (beforeFile) {
           photo_before_url = await uploadPhoto(beforeFile, userId);
         }
+        let photo_after_url = spot.photo_after_url;
+        if (afterFile) {
+          photo_after_url = await uploadPhoto(afterFile, userId);
+        }
 
         const { error: updateError } = await supabase
           .from("spots")
@@ -91,6 +96,7 @@ export function EditSpotForm({
             difficulty,
             status,
             photo_before_url,
+            photo_after_url,
             event_date: eventDate ? new Date(eventDate).toISOString() : null,
           })
           .eq("id", spot.id);
@@ -165,10 +171,17 @@ export function EditSpotForm({
           </div>
 
           <FileUploadInput
-            label="Фото «до» уборки (замена)"
+            label="Фото «до» уборки"
             file={beforeFile}
             currentUrl={spot.photo_before_url}
             onChange={setBeforeFile}
+          />
+
+          <FileUploadInput
+            label="Фото «после» уборки (результат)"
+            file={afterFile}
+            currentUrl={spot.photo_after_url}
+            onChange={setAfterFile}
           />
         </>
       )}
