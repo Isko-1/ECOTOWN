@@ -55,6 +55,9 @@ export function EditSpotForm({
   const [title, setTitle]               = useState(spot.title);
   const [description, setDescription]   = useState(spot.description);
   const [difficulty, setDifficulty]     = useState(spot.difficulty);
+  const [eventDate, setEventDate]       = useState(
+    spot.event_date ? new Date(spot.event_date).toISOString().slice(0, 16) : ""
+  );
   const [beforeFile, setBeforeFile]     = useState<File | null>(null);
 
   // ── статус — для всех ──
@@ -78,7 +81,14 @@ export function EditSpotForm({
 
         const { error: updateError } = await supabase
           .from("spots")
-          .update({ title, description, difficulty, status, photo_before_url })
+          .update({
+            title,
+            description,
+            difficulty,
+            status,
+            photo_before_url,
+            event_date: eventDate ? new Date(eventDate).toISOString() : null,
+          })
           .eq("id", spot.id);
 
         if (updateError) throw updateError;
@@ -118,6 +128,15 @@ export function EditSpotForm({
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block font-medium text-eco-800">Дата и время субботника</label>
+            <Input
+              type="datetime-local"
+              value={eventDate}
+              onChange={(e) => setEventDate(e.target.value)}
             />
           </div>
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, getClientIp, escapeHtml } from "@/lib/rateLimit";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * POST /api/notify-spot
@@ -10,6 +11,15 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
   if (!checkRateLimit(`notify-spot:${ip}`, 5, 10 * 60 * 1000)) {
     return NextResponse.json({ error: "Слишком много запросов, попробуйте позже" }, { status: 429 });
+  }
+
+  // Защита от анонимного спама: проверяем авторизацию вызова
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
   }
 
   const { spotTitle, spotId, description, difficulty, lat, lng, creatorName } =

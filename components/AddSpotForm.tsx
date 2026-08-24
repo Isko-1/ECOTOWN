@@ -37,6 +37,7 @@ export function AddSpotForm({
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<SpotStatus>("new");
   const [difficulty, setDifficulty] = useState(1);
+  const [eventDate, setEventDate] = useState("");
   const [beforeFile, setBeforeFile] = useState<File | null>(null);
   const [afterFile, setAfterFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,6 +65,7 @@ export function AddSpotForm({
           difficulty,
           photo_before_url,
           photo_after_url,
+          event_date: eventDate ? new Date(eventDate).toISOString() : null,
         })
         .select("id")
         .single();
@@ -132,6 +134,15 @@ export function AddSpotForm({
           <option value="in_progress">В работе</option>
           <option value="done">Закрыто</option>
         </select>
+      </div>
+
+      <div>
+        <label className="mb-1 block font-medium text-eco-800">Дата и время субботника (необязательно)</label>
+        <Input
+          type="datetime-local"
+          value={eventDate}
+          onChange={(e) => setEventDate(e.target.value)}
+        />
       </div>
 
       <div>

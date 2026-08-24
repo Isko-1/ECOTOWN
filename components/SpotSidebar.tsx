@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   Star,
@@ -16,7 +16,7 @@ import {
   Calendar,
   Pencil,
 } from "lucide-react";
-import type { Spot, SpotStatus, Profile } from "@/lib/types";
+import type { Spot, SpotStatus, Profile, SpotDonation } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -24,10 +24,10 @@ import { SpotChat } from "@/components/SpotChat";
 import { Modal } from "@/components/ui/Modal";
 import { CloseSpotForm } from "@/components/CloseSpotForm";
 import { EditSpotForm } from "@/components/EditSpotForm";
+import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
+import { ShareButton } from "@/components/ShareButton";
 import { DonationRequestForm } from "@/components/DonationRequestForm";
 import { DonationProgress } from "@/components/DonationProgress";
-import { useEffect } from "react";
-import type { SpotDonation } from "@/lib/types";
 
 // ─── Вспомогательные данные ───────────────────────────────────────────────────
 
@@ -44,6 +44,26 @@ const statusBadgeClass: Record<SpotStatus, string> = {
 };
 
 type Tab = "info" | "chat";
+
+function getGoogleCalendarUrl(spot: Spot) {
+  if (!spot.event_date) return "";
+  const startDate = new Date(spot.event_date);
+  const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
+  const formatUtc = (d: Date) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+  const title = encodeURIComponent(`Субботник EcoTown: ${spot.title}`);
+  const details = encodeURIComponent(`${spot.description}\n\nПодробности на сайте EcoTown.`);
+  const location = encodeURIComponent(`Координаты: ${spot.lat.toFixed(5)}, ${spot.lng.toFixed(5)}`);
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${formatUtc(startDate)}/${formatUtc(endDate)}&details=${details}&location=${location}`;
+}
+
+function getEventCountdown(eventDateIso: string) {
+  const diffMs = new Date(eventDateIso).getTime() - Date.now();
+  if (diffMs < 0) return "Субботник уже начался или прошёл";
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays > 0) return `До уборки осталось ${diffDays} дн.`;
+  return `До уборки осталось ${diffHours} ч.`;
+}
 
 // ─── Компонент ───────────────────────────────────────────────────────────────
 
@@ -318,6 +338,37 @@ export function SpotSidebar({
               {/* Описание */}
               <p className="text-sm text-eco-700 leading-relaxed">{spot.description}</p>
 
+              {/* Дата и время субботника */}
+              {spot.event_date && (
+                <div className="rounded-xl border border-eco-200 bg-eco-50/70 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-eco-800 flex items-center gap-1.5">
+                      <Calendar size={14} className="text-eco-600" /> Дата и время субботника
+                    </p>
+                    <span className="rounded-full bg-eco-100 px-2 py-0.5 text-[11px] font-medium text-eco-700">
+                      {getEventCountdown(spot.event_date)}
+                    </span>
+                  </div>
+                  <p className="text-sm font-bold text-eco-900">
+                    {new Date(spot.event_date).toLocaleString("ru-RU", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                  <a
+                    href={getGoogleCalendarUrl(spot)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-eco-700 hover:text-eco-900 underline"
+                  >
+                    📅 Добавить в Google Календарь
+                  </a>
+                </div>
+              )}
+
               {/* Сложность */}
               <div>
                 <p className="mb-1.5 text-xs font-medium text-eco-500 uppercase tracking-wide">Сложность уборки</p>
@@ -366,8 +417,18 @@ export function SpotSidebar({
                   />
                 )}
 
-              {/* Фото до/после */}
-              {(spot.photo_before_url || spot.photo_after_url) && (
+              {/* Фото до/после — если есть обе фото, показываем интерактивный слайдер */}
+              {spot.photo_before_url && spot.photo_after_url ? (
+                <div>
+                  <p className="mb-1.5 text-xs font-medium text-eco-500 uppercase tracking-wide">
+                    Результат уборки (тяни ползунок)
+                  </p>
+                  <BeforeAfterSlider
+                    beforeUrl={spot.photo_before_url}
+                    afterUrl={spot.photo_after_url}
+                  />
+                </div>
+              ) : (spot.photo_before_url || spot.photo_after_url) ? (
                 <div>
                   <p className="mb-1.5 text-xs font-medium text-eco-500 uppercase tracking-wide">Фотографии</p>
                   <div className="grid grid-cols-2 gap-2">
@@ -395,7 +456,7 @@ export function SpotSidebar({
                     )}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Волонтёры */}
               {volunteers.length > 0 && (
@@ -459,6 +520,8 @@ export function SpotSidebar({
                     }
                     {isFavorite ? "В избранном" : "В избранное"}
                   </Button>
+
+                  <ShareButton spotId={spot.id} spotTitle={spot.title} />
 
                   <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)}>
                     <Pencil size={14} /> Редактировать

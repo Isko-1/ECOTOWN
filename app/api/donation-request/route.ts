@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
   if (!checkRateLimit(`donation-request:${ip}`, 5, 10 * 60 * 1000)) {
     return NextResponse.json({ error: "Слишком много запросов, попробуйте позже" }, { status: 429 });
+  }
+
+  // Защита от анонимных запросов
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
   }
 
   const { spotId, spotTitle, purpose, goalAmount, requesterName } = await request.json();

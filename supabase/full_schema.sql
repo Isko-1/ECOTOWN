@@ -1,7 +1,7 @@
 -- ==============================================================================
--- EcoTown — Единый файл полной схемы базы данных Supabase
--- Все таблицы, функции, триггеры, политики безопасности (RLS) и хранилище файлов (Storage).
--- Запустите этот скрипт целиком в Supabase SQL Editor для быстрой настройки проекта!
+-- EcoTown — Единый файл полной схемы базы данных Supabase (Обновлено)
+-- Содержит все таблицы, миграции 0001–0012, триггеры, политики RLS и функции.
+-- Запустите этот скрипт целиком в Supabase SQL Editor для быстрой настройки!
 -- ==============================================================================
 
 -- 1. ТАБЛИЦА ПРОФИЛЕЙ (Profiles)
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   bio TEXT,
   city TEXT,
   phone TEXT,
-  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'moderator', 'admin')),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -26,9 +26,10 @@ CREATE TABLE IF NOT EXISTS public.spots (
   lng DOUBLE PRECISION NOT NULL,
   status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'in_progress', 'done')),
   difficulty SMALLINT NOT NULL CHECK (difficulty BETWEEN 1 AND 5),
-  is_public BOOLEAN NOT NULL DEFAULT TRUE,
   photo_before_url TEXT,
   photo_after_url TEXT,
+  event_date TIMESTAMPTZ,
+  closed_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -46,7 +47,7 @@ CREATE TABLE IF NOT EXISTS public.spot_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   spot_id UUID REFERENCES public.spots(id) ON DELETE CASCADE,
   user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
-  message TEXT NOT NULL,
+  message TEXT NOT NULL CHECK (char_length(message) <= 2000),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -66,7 +67,6 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Создаем единственную строку настроек по умолчанию
 INSERT INTO public.app_settings (id, kaspi_number) 
 VALUES (true, null) 
 ON CONFLICT (id) DO NOTHING;
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS public.donation_transactions (
 -- ФУНКЦИИ И ТРИГГЕРЫ
 -- ==============================================================================
 
--- Триггер автоматического создания профиля при регистрации пользователя (Google или Email)
+-- Автосоздание профиля при регистрации
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -127,44 +127,65 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
-
--- Триггер обновления собранной суммы и автозавершения сбора при добавлении транзакции
-CREATE OR REPLACE FUNCTION public.apply_donation_transaction()
+-- Защита смены роли (только админ)
+CREATE OR REPLACE FUNCTION public.protect_profile_role()
 RETURNS TRIGGER AS $$
 BEGIN
-  UPDATE public.spot_donations
-  SET collected_amount = collected_amount + new.amount,
-      status = CASE
-        WHEN collected_amount + new.amount >= goal_amount THEN 'completed'
-        ELSE status
-      END
-  WHERE id = new.donation_id;
+  IF new.role IS DISTINCT FROM old.role
+     AND auth.uid() IS NOT NULL
+     AND NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  THEN
+    RAISE EXCEPTION 'Роль может менять только администратор';
+  END IF;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS on_donation_transaction_insert ON public.donation_transactions;
-CREATE TRIGGER on_donation_transaction_insert
-  AFTER INSERT ON public.donation_transactions
-  FOR EACH ROW EXECUTE PROCEDURE public.apply_donation_transaction();
+DROP TRIGGER IF EXISTS protect_profile_role_trigger ON public.profiles;
+CREATE TRIGGER protect_profile_role_trigger
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE PROCEDURE public.protect_profile_role();
 
-
--- ==============================================================================
--- REALTIME (Включение живых сообщений в чате)
--- ==============================================================================
-DO $$
+-- Защита полей метки от изменения чужими волонтёрами
+CREATE OR REPLACE FUNCTION public.protect_spot_fields()
+RETURNS TRIGGER AS $$
+DECLARE
+  caller_role TEXT;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_publication_tables
-    WHERE pubname = 'supabase_realtime' AND tablename = 'spot_messages'
-  ) THEN
-    ALTER PUBLICATION supabase_realtime ADD TABLE public.spot_messages;
+  SELECT role INTO caller_role FROM public.profiles WHERE id = auth.uid();
+
+  IF caller_role IN ('moderator', 'admin') THEN
+    RETURN NEW;
   END IF;
-END $$;
+
+  IF auth.uid() = OLD.created_by THEN
+    RETURN NEW;
+  END IF;
+
+  IF NEW.title IS DISTINCT FROM OLD.title
+     OR NEW.description IS DISTINCT FROM OLD.description
+     OR NEW.lat IS DISTINCT FROM OLD.lat
+     OR NEW.lng IS DISTINCT FROM OLD.lng
+     OR NEW.difficulty IS DISTINCT FROM OLD.difficulty
+     OR NEW.created_by IS DISTINCT FROM OLD.created_by
+     OR NEW.photo_before_url IS DISTINCT FROM OLD.photo_before_url
+     OR NEW.event_date IS DISTINCT FROM OLD.event_date
+  THEN
+    RAISE EXCEPTION 'Только автор метки или модератор может менять эти поля';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS protect_spot_fields_trigger ON public.spots;
+CREATE TRIGGER protect_spot_fields_trigger
+  BEFORE UPDATE ON public.spots
+  FOR EACH ROW EXECUTE PROCEDURE public.protect_spot_fields();
 
 
 -- ==============================================================================
--- БЕЗОПАСНОСТЬ И RLS ПОЛИТИКИ (Row Level Security)
+-- RLS ПОЛИТИКИ И РАЗРЕШЕНИЯ
 -- ==============================================================================
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -176,153 +197,39 @@ ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.spot_donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.donation_transactions ENABLE ROW LEVEL SECURITY;
 
--- Profiles policies
-DROP POLICY IF EXISTS "profiles_select_all" ON public.profiles;
 CREATE POLICY "profiles_select_all" ON public.profiles FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
 CREATE POLICY "profiles_update_own" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
--- Spots policies
-DROP POLICY IF EXISTS "spots_select" ON public.spots;
-CREATE POLICY "spots_select" ON public.spots FOR SELECT
-  USING (is_public = true OR created_by = auth.uid());
-
-DROP POLICY IF EXISTS "spots_insert" ON public.spots;
+CREATE POLICY "spots_select" ON public.spots FOR SELECT USING (true);
 CREATE POLICY "spots_insert" ON public.spots FOR INSERT WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "spots_update" ON public.spots FOR UPDATE USING (
+  auth.uid() = created_by
+  OR EXISTS (SELECT 1 FROM public.spot_volunteers v WHERE v.spot_id = spots.id AND v.user_id = auth.uid())
+  OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('moderator', 'admin'))
+);
+CREATE POLICY "spots_delete" ON public.spots FOR DELETE USING (
+  auth.uid() = created_by
+  OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('moderator', 'admin'))
+);
 
-DROP POLICY IF EXISTS "spots_update" ON public.spots;
-CREATE POLICY "spots_update" ON public.spots FOR UPDATE
-  USING (
-    auth.uid() = created_by
-    OR EXISTS (
-      SELECT 1 FROM public.spot_volunteers v
-      WHERE v.spot_id = spots.id AND v.user_id = auth.uid()
-    )
-  );
-
--- Spot volunteers policies
-DROP POLICY IF EXISTS "volunteers_select" ON public.spot_volunteers;
 CREATE POLICY "volunteers_select" ON public.spot_volunteers FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "volunteers_insert" ON public.spot_volunteers;
 CREATE POLICY "volunteers_insert" ON public.spot_volunteers FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "volunteers_delete" ON public.spot_volunteers;
 CREATE POLICY "volunteers_delete" ON public.spot_volunteers FOR DELETE USING (auth.uid() = user_id);
 
--- Spot messages policies
-DROP POLICY IF EXISTS "messages_select" ON public.spot_messages;
 CREATE POLICY "messages_select" ON public.spot_messages FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "messages_insert" ON public.spot_messages;
 CREATE POLICY "messages_insert" ON public.spot_messages FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Favorites policies
-DROP POLICY IF EXISTS "favorites_select_own" ON public.favorites;
 CREATE POLICY "favorites_select_own" ON public.favorites FOR SELECT USING (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "favorites_insert_own" ON public.favorites;
 CREATE POLICY "favorites_insert_own" ON public.favorites FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "favorites_delete_own" ON public.favorites;
 CREATE POLICY "favorites_delete_own" ON public.favorites FOR DELETE USING (auth.uid() = user_id);
 
--- App settings policies
-DROP POLICY IF EXISTS "settings_select_all" ON public.app_settings;
-CREATE POLICY "settings_select_all" ON public.app_settings FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "settings_update_admin" ON public.app_settings;
-CREATE POLICY "settings_update_admin" ON public.app_settings FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
-
--- Spot donations policies
-DROP POLICY IF EXISTS "donations_select" ON public.spot_donations;
-CREATE POLICY "donations_select" ON public.spot_donations FOR SELECT
-  USING (
-    status IN ('approved', 'completed')
-    OR requested_by = auth.uid()
-    OR EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin')
-  );
-
-DROP POLICY IF EXISTS "donations_insert" ON public.spot_donations;
-CREATE POLICY "donations_insert" ON public.spot_donations FOR INSERT
-  WITH CHECK (
-    auth.uid() = requested_by
-    AND status = 'pending'
-    AND collected_amount = 0
-    AND EXISTS (
-      SELECT 1 FROM public.spot_volunteers v
-      WHERE v.spot_id = spot_donations.spot_id AND v.user_id = auth.uid()
-    )
-  );
-
-DROP POLICY IF EXISTS "donations_update_admin" ON public.spot_donations;
-CREATE POLICY "donations_update_admin" ON public.spot_donations FOR UPDATE
-  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
-
--- Donation transactions policies
-DROP POLICY IF EXISTS "transactions_select_all" ON public.donation_transactions;
-CREATE POLICY "transactions_select_all" ON public.donation_transactions FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "transactions_insert_admin" ON public.donation_transactions;
-CREATE POLICY "transactions_insert_admin" ON public.donation_transactions FOR INSERT
-  WITH CHECK (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'admin'));
-
-
--- ==============================================================================
--- BUCKETS И ХРАНИЛИЩЕ (Storage Policies for spot-photos and avatars)
--- ==============================================================================
-
--- Создаем публичные бакеты для аватарок и фотографий меток
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('spot-photos', 'spot-photos', true), ('avatars', 'avatars', true)
-ON CONFLICT (id) DO NOTHING;
-
--- Политики для storage.objects
-DROP POLICY IF EXISTS "spot_photos_public_read" ON storage.objects;
-CREATE POLICY "spot_photos_public_read" ON storage.objects FOR SELECT
-  USING (bucket_id = 'spot-photos');
-
-DROP POLICY IF EXISTS "spot_photos_own_insert" ON storage.objects;
-CREATE POLICY "spot_photos_own_insert" ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'spot-photos' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-DROP POLICY IF EXISTS "avatars_public_read" ON storage.objects;
-CREATE POLICY "avatars_public_read" ON storage.objects FOR SELECT
-  USING (bucket_id = 'avatars');
-
-DROP POLICY IF EXISTS "avatars_own_insert" ON storage.objects;
-CREATE POLICY "avatars_own_insert" ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-DROP POLICY IF EXISTS "avatars_own_update" ON storage.objects;
-CREATE POLICY "avatars_own_update" ON storage.objects FOR UPDATE TO authenticated
-  USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
-
-
--- ==============================================================================
--- ⚠️ ЭТОТ ФАЙЛ ОТСТАЁТ ОТ МИГРАЦИЙ 0002–0008 — см. supabase/migrations/
--- ==============================================================================
--- Ниже (в блоке CREATE TABLE выше) всё ещё нет: роли 'moderator' (только 'user'/'admin'),
--- колонки spots.closed_at, а колонка spots.is_public всё ещё присутствует хотя была
--- удалена миграцией 0008 (все метки публичны). Использовать этот файл для развёртывания
--- с нуля сейчас нельзя без предварительной сверки с миграциями 0002_google_profile_metadata.sql
--- … 0008_moderation_and_cleanup.sql. Это отдельная задача, не относящаяся к статистике ниже.
-
-
--- ==============================================================================
--- СТАТИСТИКА ДЛЯ АДМИН-ПАНЕЛИ (см. миграцию 0009_admin_dashboard_stats.sql)
--- ==============================================================================
--- Функция admin_dashboard_stats() — источник данных для вкладки "Статистика" в /admin.
--- Полный текст — в supabase/migrations/0009_admin_dashboard_stats.sql (не дублируем
--- здесь, чтобы не рассинхронизировать две копии одной функции).
-
-
--- ==============================================================================
--- КАК СДЕЛАТЬ СЕБЯ АДМИНОМ (Выполнить после регистрации своего аккаунта):
--- Замените 'твой@email.com' на свой реальный Email
--- ==============================================================================
--- UPDATE public.profiles 
--- SET role = 'admin' 
--- WHERE id = (SELECT id FROM auth.users WHERE email = 'твой@email.com');
+-- REALTIME ДЛЯ ЧАТА
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'spot_messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.spot_messages;
+  END IF;
+END $$;

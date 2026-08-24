@@ -22,6 +22,7 @@ export type Spot = {
   difficulty: number;
   photo_before_url: string | null;
   photo_after_url: string | null;
+  event_date: string | null;
   created_at: string;
   updated_at: string;
   closed_at: string | null;
