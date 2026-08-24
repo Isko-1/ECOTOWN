@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Shield, ShieldCheck, User as UserIcon } from "lucide-react";
+import { Shield, ShieldCheck, User as UserIcon, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { AdminUserRow } from "@/lib/types";
 
@@ -13,17 +13,21 @@ const ROLE_LABEL: Record<AdminUserRow["role"], string> = {
 
 const ROLE_ORDER: AdminUserRow["role"][] = ["user", "moderator", "admin"];
 
-/**
- * Список всех пользователей с переключателем роли.
- * Смена роли идёт через RPC admin_set_user_role — она сама проверяет на сервере,
- * что вызывающий действительно admin, так что даже если кто-то обойдёт эту кнопку
- * через devtools, без прав admin в базе запрос будет отклонён.
- */
 export function AdminUsersPanel({ users: initialUsers, myId }: { users: AdminUserRow[]; myId: string }) {
   const supabase = createClient();
   const [users, setUsers] = useState(initialUsers);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const filtered = users.filter((u) => {
+    const q = query.toLowerCase();
+    return (
+      !q ||
+      (u.display_name ?? "").toLowerCase().includes(q) ||
+      (u.email ?? "").toLowerCase().includes(q)
+    );
+  });
 
   async function setRole(userId: string, role: AdminUserRow["role"]) {
     setBusyId(userId);
@@ -43,20 +47,47 @@ export function AdminUsersPanel({ users: initialUsers, myId }: { users: AdminUse
   return (
     <div>
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+
+      {/* Поиск */}
+      <div className="mb-4 relative">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-eco-400 pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Поиск по имени или email…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full rounded-xl border border-eco-200 bg-eco-50 py-2 pl-9 pr-4 text-sm text-eco-900 placeholder-eco-400 focus:outline-none focus:ring-2 focus:ring-eco-500"
+        />
+      </div>
+
+      <p className="mb-3 text-xs text-eco-500">
+        Показано <span className="font-semibold text-eco-700">{filtered.length}</span> из{" "}
+        <span className="font-semibold text-eco-700">{users.length}</span> пользователей
+      </p>
+
       <div className="flex flex-col gap-2">
-        {users.map((u) => (
+        {filtered.length === 0 && (
+          <p className="py-6 text-center text-sm text-eco-400">Пользователи не найдены</p>
+        )}
+        {filtered.map((u) => (
           <div
             key={u.id}
             className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-eco-200 bg-white p-3"
           >
-            <div className="min-w-0">
-              <p className="truncate font-medium text-eco-900">
-                {u.display_name} {u.id === myId && <span className="text-xs text-eco-400">(это ты)</span>}
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium text-eco-900 text-sm">
+                {u.display_name || <span className="italic text-eco-400">Без имени</span>}
+                {u.id === myId && <span className="ml-1 text-xs text-eco-400">(это ты)</span>}
               </p>
               <p className="truncate text-xs text-eco-500">{u.email}</p>
+              {u.created_at && (
+                <p className="text-[11px] text-eco-300 mt-0.5">
+                  с {new Date(u.created_at).toLocaleDateString("ru-RU")}
+                </p>
+              )}
             </div>
 
-            <div className="flex items-center gap-1 rounded-lg bg-eco-50 p-1">
+            <div className="flex items-center gap-1 rounded-lg bg-eco-50 p-1 shrink-0">
               {ROLE_ORDER.map((role) => (
                 <button
                   key={role}
@@ -80,3 +111,4 @@ export function AdminUsersPanel({ users: initialUsers, myId }: { users: AdminUse
     </div>
   );
 }
+

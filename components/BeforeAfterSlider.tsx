@@ -57,8 +57,8 @@ export function BeforeAfterSlider({
         className="absolute inset-0 h-full w-full object-cover"
         draggable={false}
       />
-      <span className="absolute bottom-3 right-3 z-10 rounded-full bg-eco-900/80 px-2.5 py-1 text-xs font-semibold text-eco-100 backdrop-blur-sm">
-        ✨ {afterLabel}
+      <span className="absolute bottom-3 right-3 z-10 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+        {afterLabel}
       </span>
 
       {/* Фото ДО (наложение со свойством clip-path) */}
@@ -73,8 +73,8 @@ export function BeforeAfterSlider({
           className="absolute inset-0 h-full w-full object-cover"
           draggable={false}
         />
-        <span className="absolute bottom-3 left-3 z-10 rounded-full bg-red-950/80 px-2.5 py-1 text-xs font-semibold text-red-200 backdrop-blur-sm">
-          🗑️ {beforeLabel}
+        <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/50 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+          {beforeLabel}
         </span>
       </div>
 

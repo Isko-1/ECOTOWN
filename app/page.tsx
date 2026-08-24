@@ -9,15 +9,13 @@ import {
   CheckCircle2,
   Sparkles,
   ArrowRight,
-  ShieldCheck,
-  Compass,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { ContactForm } from "@/components/ContactForm";
 import { StatsSection } from "@/components/StatsSection";
 import { RecentCleanupsSection } from "@/components/RecentCleanupsSection";
-import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
+import { RandomBeforeAfterWidget } from "@/components/RandomBeforeAfterWidget";
 import { createClient } from "@/lib/supabase/server";
 
 const pillars = [
@@ -71,7 +69,7 @@ const steps = [
 export default async function HomePage() {
   const supabase = await createClient();
 
-  const [{ data: { user } }, { data: realProfiles, count: profileCount }, { data: latestSpot }, { count: totalSpotsCount }] =
+  const [{ data: { user } }, { data: realProfiles, count: profileCount }] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase
@@ -79,19 +77,8 @@ export default async function HomePage() {
         .select("id, display_name, avatar_url", { count: "exact" })
         .not("display_name", "is", null)
         .limit(4),
-      supabase
-        .from("spots")
-        .select("*")
-        .eq("status", "done")
-        .not("photo_before_url", "is", null)
-        .not("photo_after_url", "is", null)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      supabase.from("spots").select("*", { count: "exact", head: true }),
     ]);
 
-  const totalSpots = totalSpotsCount ?? 0;
   const profiles = realProfiles ?? [];
   const realCount = profileCount ?? 0;
 
@@ -175,45 +162,9 @@ export default async function HomePage() {
               )}
             </div>
 
-            {/* Правая колонка (Виджет — ТОЛЬКО реальные данные или карта) */}
+            {/* Правая колонка — случайный слайдер До/После */}
             <div className="lg:col-span-5 relative">
-              {latestSpot && latestSpot.photo_before_url && latestSpot.photo_after_url ? (
-                <div className="relative rounded-3xl border border-eco-200/80 bg-white p-4 shadow-2xl shadow-eco-900/10 backdrop-blur-xl">
-                  <div className="mb-3 flex items-center justify-between px-2">
-                    <span className="text-xs font-semibold text-eco-800 truncate">
-                      {latestSpot.title}
-                    </span>
-                    <span className="rounded-full bg-eco-100 px-2 py-0.5 text-[10px] font-bold text-eco-700 shrink-0">
-                      ✨ Последняя уборка
-                    </span>
-                  </div>
-
-                  <BeforeAfterSlider
-                    beforeUrl={latestSpot.photo_before_url}
-                    afterUrl={latestSpot.photo_after_url}
-                  />
-                </div>
-              ) : (
-                /* Если реальной закрытой метки с фото еще нет — показываем плашку интерактивной карты */
-                <div className="relative rounded-3xl border border-eco-200 bg-eco-50/60 p-8 text-center shadow-lg backdrop-blur-xl space-y-4">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-eco-600 text-white shadow-md">
-                    <Compass size={28} />
-                  </div>
-                  <div>
-                    <h3 className="font-display text-lg font-bold text-eco-950">Карта Уральска ready</h3>
-                    <p className="mt-1 text-xs text-eco-600 leading-relaxed">
-                      {totalSpots > 0
-                        ? `На карте отмечено ${totalSpots} точек. Откройте карту, чтобы взять метку в работу.`
-                        : "Будьте первым! Отметьте загрязненное место на карте города."}
-                    </p>
-                  </div>
-                  <Link href="/map" className="inline-block">
-                    <Button variant="primary" size="sm" className="w-full">
-                      Перейти к карте →
-                    </Button>
-                  </Link>
-                </div>
-              )}
+              <RandomBeforeAfterWidget />
             </div>
           </div>
         </div>
