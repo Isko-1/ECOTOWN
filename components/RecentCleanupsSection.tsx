@@ -5,33 +5,10 @@ import { BeforeAfterSlider } from "@/components/BeforeAfterSlider";
 import { ShareButton } from "@/components/ShareButton";
 import type { Spot } from "@/lib/types";
 
-// Демо-данные для Уральска на случай, если в БД ещё нет закрытых меток с фото
-const MOCK_CLEANUPS: Partial<Spot>[] = [
-  {
-    id: "demo-1",
-    title: "Набережная реки Чаган",
-    description: "Собрали 14 мешков пластика и сухостоя вдоль прогулочной зоны.",
-    photo_before_url: "https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&w=800&q=80",
-    photo_after_url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
-    status: "done",
-    difficulty: 3,
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-  },
-  {
-    id: "demo-2",
-    title: "Зачаганск, ул. Монкеулы",
-    description: "Ликвидировали стихийную свалку строительных отходов во дворе.",
-    photo_before_url: "https://images.unsplash.com/photo-1611284446314-60a55ac7deab?auto=format&fit=crop&w=800&q=80",
-    photo_after_url: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=800&q=80",
-    status: "done",
-    difficulty: 4,
-    created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-  },
-];
-
 export async function RecentCleanupsSection() {
   const supabase = await createClient();
 
+  // Запрашиваем ТОЛЬКО реальные закрытые метки из Supabase с загруженными фото до и после
   const { data: dbSpots } = await supabase
     .from("spots")
     .select("*")
@@ -39,9 +16,14 @@ export async function RecentCleanupsSection() {
     .not("photo_before_url", "is", null)
     .not("photo_after_url", "is", null)
     .order("updated_at", { ascending: false })
-    .limit(2);
+    .limit(4);
 
-  const cleanups = (dbSpots && dbSpots.length > 0 ? dbSpots : MOCK_CLEANUPS) as Spot[];
+  // Если в базе еще нет реальных закрытых меток с фото — НЕ показываем блок вообще!
+  if (!dbSpots || dbSpots.length === 0) {
+    return null;
+  }
+
+  const cleanups = dbSpots as Spot[];
 
   return (
     <section className="py-20 bg-gradient-to-b from-eco-50/40 via-white to-eco-50/20">
@@ -50,7 +32,7 @@ export async function RecentCleanupsSection() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-eco-100/80 px-3 py-1 text-xs font-semibold text-eco-800">
               <Sparkles size={14} className="text-eco-600" />
-              Живой результат в Орале
+              Результаты волонтеров
             </div>
             <h2 className="mt-3 font-display text-3xl font-extrabold text-eco-950 md:text-4xl tracking-tight">
               Смотрите, как меняется город
