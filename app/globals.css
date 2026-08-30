@@ -2,12 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+body {
   --font-display: var(--font-manrope);
   --font-body: var(--font-inter);
-}
-
-body {
   @apply bg-white text-eco-900 antialiased;
 }
 
