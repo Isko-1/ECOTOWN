@@ -12,11 +12,11 @@ export async function StatsSection() {
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [spots, done, volunteers, takenSpotIds, recentlyClosed, donations, newSpots] = await Promise.all([
+  const [spots, done, volunteers, inProgress, recentlyClosed, donations, newSpots] = await Promise.all([
     supabase.from("spots").select("*", { count: "exact", head: true }),
     supabase.from("spots").select("*", { count: "exact", head: true }).eq("status", "done"),
     supabase.from("profiles").select("*", { count: "exact", head: true }),
-    supabase.from("spot_volunteers").select("spot_id"),
+    supabase.from("spots").select("*", { count: "exact", head: true }).eq("status", "in_progress"),
     supabase.from("spots").select("*", { count: "exact", head: true }).eq("status", "done").gte("closed_at", thirtyDaysAgo),
     supabase.from("spot_donations").select("collected_amount").in("status", ["approved", "completed"]),
     supabase.from("spots").select("*", { count: "exact", head: true }).eq("status", "new"),
@@ -25,7 +25,7 @@ export async function StatsSection() {
   const total = spots.count ?? 0;
   const doneCount = done.count ?? 0;
   const newCount = newSpots.count ?? 0;
-  const takenCount = new Set((takenSpotIds.data ?? []).map((r) => r.spot_id)).size;
+  const takenCount = inProgress.count ?? 0;
   const donatedTotal = (donations.data ?? []).reduce((sum, d) => sum + Number(d.collected_amount ?? 0), 0);
 
   const newPercent = total > 0 ? Math.round((newCount / total) * 100) : 0;
